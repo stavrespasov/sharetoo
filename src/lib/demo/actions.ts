@@ -52,12 +52,16 @@ export function rentalQuote(vehicle: Vehicle, state: Store, range: Interval) {
   const offer = state.offers.find((item) => item.vehicleId === vehicle.id && covers(item, range));
   return quote({ ...vehicle, dailyRate: offer?.dailyRate ?? vehicle.dailyRate }, range, state.settings.fee);
 }
-export function unavailable(vehicle: Vehicle, state: Store, range: Interval, ignore?: string) {
-  if (!isListed(vehicle)) return "This vehicle is currently offline.";
+export function unavailable(vehicle: Vehicle, state: Store, range: Interval, ignore?: string, locale = "en") {
+  if (!isListed(vehicle)) return locale === "sl" ? "Vozilo trenutno ni na voljo." : "This vehicle is currently offline.";
   const windows = state.windows.filter((window) => window.vehicleId === vehicle.id);
-  if (windows.length && !windows.some((window) => covers(window, range))) return "This rental falls outside the bookable dates.";
+  if (windows.length && !windows.some((window) => covers(window, range))) return locale === "sl" ? "Izbrani termin je izven obdobja, ki je na voljo za najem." : "This rental falls outside the bookable dates.";
   const clash = conflict(vehicle.id, range, state.bookings, state.blocks, state.settings.buffer, ignore);
-  return clash ? `Unavailable from ${formatDate(clash.pickup)} to ${formatDate(clash.returnAt)}. A turnaround buffer may apply.` : "";
+  if (!clash) return "";
+  const from = formatDate(clash.pickup, locale);
+  const to = formatDate(clash.returnAt, locale);
+  return locale === "sl" ? `Vozilo ni na voljo od ${from} do ${to}. Upoštevajte tudi čas med najemi.`
+    : `Unavailable from ${from} to ${to}. A turnaround buffer may apply.`;
 }
 export function publicStore(state: Store): Store {
   return { ...state, vehicles: state.vehicles.filter(isListed).map((v) => ({ ...v, plate: "" })), bookings: state.bookings.filter((b) => ["CONFIRMED", "PICKED_UP", "RETURNED"].includes(b.status)).map((b) => ({

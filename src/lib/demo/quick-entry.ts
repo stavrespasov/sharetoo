@@ -14,12 +14,12 @@ const colors = [
   [/\b(?:blue|mod[er][ra]{0,2})\b/i,"Blue"],[/\b(?:red|rdeč[ao]?)\b/i,"Red"],
 ] as const;
 const weekdays = [
-  /\b(?:monday|ponedeljek)\b/i, /\b(?:tuesday|torek)\b/i, /\b(?:wednesday|sreda|srede)\b/i,
-  /\b(?:thursday|četrtek)\b/i, /\b(?:friday|petek)\b/i, /\b(?:saturday|sobota|sobote)\b/i, /\b(?:sunday|nedelj[aeo])\b/i,
+  /\b(?:monday|ponedeljek|ponedeljka)\b/i, /\b(?:tuesday|torek)\b/i, /\b(?:wednesday|sreda|srede)\b/i,
+  /\b(?:thursday|četrtek)\b/i, /\b(?:friday|petek|petka)\b/i, /\b(?:saturday|sobota|sobote)\b/i, /\b(?:sunday|nedelj[aeo])\b/i,
 ];
 const euros = "(?:€\\s*)?(\\d+(?:[.,]\\d{1,2})?)\\s*(?:€|(?:eur(?:os?|ov)?|evr(?:o|ov|a)?))?";
 const daily = new RegExp(euros + "\\s*(?:per day|a day|/\\s*day|na dan|dnevno)", "i");
-const deposit = new RegExp(euros + "\\s*(?:deposit|varščin[aeo])|(?:deposit|varščin[aeo])\\s*" + euros, "i");
+const deposit = new RegExp(euros + "\\s*(?:deposit|varščin[aeio])|(?:deposit|varščin[aeio])\\s*" + euros, "i");
 const toCents = (value?: string) => value ? Math.round(Number(value.replace(",", ".")) * 100) : undefined;
 const wordDay = (value: string) => weekdays.findIndex((pattern) => pattern.test(value)) + 1;
 
@@ -62,7 +62,7 @@ export function parseVehicleDescription(source: string, settings: Settings, now?
   const color = colors.find(([pattern]) => pattern.test(source))?.[1];
   return {
     example, make, model, color, year: Number(source.match(/\b(?:19|20)\d{2}\b/)?.[0]) || undefined,
-    transmission: /automatic|avtomat/i.test(source) ? "Automatic" as const : /manual|ročn/i.test(source) ? "Manual" as const : undefined,
+    transmission: /automatic|avtomat|samodej/i.test(source) ? "Automatic" as const : /manual|ročn/i.test(source) ? "Manual" as const : undefined,
     dailyRate: toCents(dayRate), deposit: toCents(refundable?.[1] ?? refundable?.[2]),
     range: commandDates(source,settings,now), intent: /\b(?:offer|ponud)\w*/i.test(source) ? "offer" : /\b(?:set|update|nastavi|spremeni)\b/i.test(source) ? "update" : "vehicle",
   } as const;

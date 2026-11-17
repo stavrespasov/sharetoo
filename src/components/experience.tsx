@@ -7,7 +7,7 @@ import { seedStore } from "@/lib/demo/seed";
 import type { Store } from "@/lib/booking/types";
 import PublicExperience from "./public";
 import AdminExperience from "./admin";
-import { Notice, type Lang } from "./common";
+import { l, Notice, type Lang } from "./common";
 
 type Workspace = { state: Store; owner: boolean; receipt?: Receipt };
 function localState() {
@@ -33,7 +33,7 @@ export default function Experience({ brand, hosted }: { brand: string; hosted: b
   const path = pathname.split("/").filter(Boolean);
   const [workspace,setWorkspace] = useState<Workspace>();
   const [error,setError] = useState("");
-  const [lang,setLang] = useState<Lang>("en");
+  const [lang,setLang] = useState<Lang>("sl");
   const [lastReceipt,setReceipt] = useState<Receipt>();
   const ref = params.get("ref") ?? "";
   const isAdmin = path[0] === "admin";
@@ -45,7 +45,7 @@ export default function Experience({ brand, hosted }: { brand: string; hosted: b
   useEffect(() => {
     let alive = true;
     const load = () => refresh().then((value) => {
-      if (alive) {setWorkspace(value); setError(""); setLang(localStorage.getItem("sharetoo-lang") === "sl" ? "sl" : "en");}
+      if (alive) {setWorkspace(value); setError(""); setLang(localStorage.getItem("sharetoo-lang") === "en" ? "en" : "sl");}
     }).catch((e: Error) => { if (alive) setError(e.message); });
     void load();
     const active = () => { if (!document.hidden) void load(); };
@@ -86,7 +86,7 @@ export default function Experience({ brand, hosted }: { brand: string; hosted: b
     router.push("/");
   }
   function language(value: Lang) {localStorage.setItem("sharetoo-lang",value);setLang(value);}
-  if (!workspace) return <main className="shell section"><h2>{brand}</h2>{error ? <Notice error>{error} <button onClick={() => location.reload()}>Retry</button></Notice> : <p role="status">Loading…</p>}</main>;
+  if (!workspace) return <main className="shell section"><h2>{brand}</h2>{error ? <Notice error>{error} <button onClick={() => location.reload()}>{l(lang,"Retry","Poskusi znova")}</button></Notice> : <p role="status">{l(lang,"Loading…","Nalaganje…")}</p>}</main>;
   if (isAdmin) return <AdminExperience key={pathname} state={workspace.state} brand={brand} lang={lang} path={path} perform={perform} language={language} hosted={hosted} owner={workspace.owner && !loginPath} signIn={signIn} signOut={signOut} />;
   return <PublicExperience state={workspace.state} brand={brand} lang={lang} language={language} path={path} perform={perform} receipt={workspace.receipt ?? lastReceipt} />;
 }

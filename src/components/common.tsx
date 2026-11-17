@@ -10,6 +10,14 @@ import type { Command, Receipt } from "@/lib/demo/actions";
 export type Lang = "en" | "sl";
 export type Perform = (action: Command) => Promise<Receipt | undefined>;
 export const l = (lang: Lang, en: string, sl: string) => lang === "sl" ? sl : en;
+const vehicleLabels: Record<string, string> = {
+  Crossover: "Križanec", Coupé: "Kupe", Hatchback: "Kombilimuzina", Estate: "Karavan", Van: "Kombi", Other: "Drugo",
+  Automatic: "Samodejni", Manual: "Ročni", Petrol: "Bencin", Diesel: "Dizel", Hybrid: "Hibrid", Electric: "Električni",
+  Graphite: "Grafitna", White: "Bela", Black: "Črna",
+  "Air conditioning": "Klimatska naprava", "Winter tyres": "Zimske pnevmatike", "Parking sensors": "Parkirni senzorji",
+};
+export const txVehicle = (value: string, lang: Lang) => lang === "sl" ? vehicleLabels[value] ?? value : value;
+
 export const txStatus = (status: string, lang: Lang) => {
   const words: Record<string, [string, string]> = { REQUESTED: ["Requested", "Prejeto"], CONFIRMED: ["Confirmed", "Potrjeno"], PICKED_UP: ["Picked up", "Prevzeto"], RETURNED: ["Returned", "Vrnjeno"], CANCELLED: ["Cancelled", "Preklicano"], REJECTED: ["Rejected", "Zavrnjeno"] };
   return words[status]?.[lang === "sl" ? 1 : 0] ?? status;
@@ -29,9 +37,9 @@ export function CarCard({ vehicle, lang, href, quote, available }: { vehicle: Ve
   return <article className="car-card">
     <Link href={href} aria-label={vehicleName(vehicle)}><ImageCar vehicle={vehicle} lang={lang} /></Link>
     <div className="card-body">
-      <div className="spread"><span className="eyebrow">{vehicle.category} · {vehicle.year}</span>{available && <span className="pill"><span className="dot" /> {l(lang,"Available","Na voljo")}</span>}</div>
+      <div className="spread"><span className="eyebrow">{txVehicle(vehicle.category,lang)} · {vehicle.year}</span>{available && <span className="pill"><span className="dot" /> {l(lang,"Available","Na voljo")}</span>}</div>
       <h3><Link href={href}>{vehicleName(vehicle)}</Link></h3>
-      <div className="specs"><span><Gauge size={15} />{vehicle.transmission}</span><span><UsersRound size={15} />{vehicle.seats}</span><span><Fuel size={15} />{vehicle.fuel}</span></div>
+      <div className="specs"><span><Gauge size={15} />{txVehicle(vehicle.transmission,lang)}</span><span><UsersRound size={15} />{vehicle.seats}</span><span><Fuel size={15} />{txVehicle(vehicle.fuel,lang)}</span></div>
       <div className="card-bottom spread"><div><strong>{formatMoney(quote?.total ?? vehicle.dailyRate, lang)}</strong> <span>{quote ? l(lang,"trip total","najem skupaj") : l(lang,"/ day","/ dan")}</span></div><Link className="icon-btn" href={href} aria-label={l(lang,"View vehicle","Ogled vozila")}><ArrowUpRight size={18} /></Link></div>
     </div>
   </article>;

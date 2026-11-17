@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ArrowRight, ArrowUpRight, CalendarDays, CarFront, Check, ChevronDown, Clock3, KeyRound, MapPin, Menu, Search, ShieldCheck, X } from "lucide-react";
-import { useState, type FormEvent } from "react";
-import { formatDate, formatMoney, quickInterval, toInterval, validateWindow, type Quick } from "@/lib/booking/domain";
+import { ArrowRight, ArrowUpRight, CalendarDays, CarFront, Check, ChevronDown, Clock3, KeyRound, MapPin, Menu, Search, ShieldCheck, X } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { DomainError, formatDate, formatMoney, quickInterval, toInterval, validateWindow, type Quick } from "@/lib/booking/domain";
 import { categories, vehicleName, type Interval, type Store, type Vehicle } from "@/lib/booking/types";
 import { isListed, rentalQuote, unavailable, type Receipt } from "@/lib/demo/actions";
-import { Brand, Breadcrumb, CarCard, Field, ImageCar, intervalQuery, l, Notice, QuoteCard, txStatus, type Lang, type Perform } from "./common";
+import { Brand, Breadcrumb, CarCard, Field, ImageCar, intervalQuery, l, Notice, QuoteCard, txStatus, txVehicle, type Lang, type Perform } from "./common";
+
+import { RentalTime } from "./rental-time";
 
 type Props = { state: Store; brand: string; lang: Lang; language: (lang: Lang) => void; path: string[]; perform: Perform; receipt?: Receipt };
 type LocalRange = Interval;
@@ -20,6 +22,19 @@ const faq = [
 function Faq({ lang }: { lang: Lang }) {
   return <div className="faq-list">{faq.map(([en, a, sl, b]) => <details key={en}><summary>{l(lang,en,sl)}<ChevronDown size={20} /></summary><p>{l(lang,a,b)}</p></details>)}</div>;
 }
+function rentalMessage(error: unknown, state: Store, lang: Lang) {
+  const fallback = error instanceof Error ? error.message : "Unable to process request.";
+  if (lang === "en") return fallback;
+  const { minNotice, minHours, maxDays, open, close } = state.settings;
+  const messages: Record<string, string> = {
+    dates: "Preverite datum in uro. Vračilo mora biti po prevzemu.",
+    notice: `Izberite prevzem vsaj ${minNotice} minut vnaprej.`,
+    duration: `Najem je mogoč za najmanj ${minHours} ur in največ ${maxDays} dni.`,
+    hours: `Prevzem in vračilo sta mogoča med ${open} in ${close} po lokalnem času.`,
+    availability: "Vozilo za izbrani termin ni več na voljo.",
+  };
+  return (error instanceof DomainError && messages[error.code]) || "Povpraševanja ni bilo mogoče obdelati. Preverite podatke in poskusite znova.";
+}
 function SearchBar({ state, lang, initial, onSearch }: { state: Store; lang: Lang; initial?: LocalRange; onSearch: (range: LocalRange) => void }) {
   const [range, setRange] = useState(() => initial ?? quickInterval("today", state.settings));
   const [preset, setPreset] = useState<Quick | "">("");
@@ -28,13 +43,13 @@ function SearchBar({ state, lang, initial, onSearch }: { state: Store; lang: Lan
   function submit(event: FormEvent) {
     event.preventDefault();
     try { validateWindow(toInterval(range.pickup, range.returnAt), state.settings); setError(""); onSearch(range); }
-    catch (e) { setError((e as Error).message); }
+    catch (e) { setError(rentalMessage(e,state,lang)); }
   }
   return <form className="search-panel" onSubmit={submit}>
-    <div className="search-top"><span className="location"><MapPin size={17} /> Ljubljana, Slovenija</span><div className="quick-pills" aria-label="Rental presets">{quickChoices.map(([key, en, sl]) => <button type="button" className={preset === key ? "selected" : ""} key={key} onClick={() => {setPreset(key);setRange(quickInterval(key,state.settings));setError("");}}>{l(lang,en,sl)}</button>)}</div></div>
+    <div className="search-top"><span className="location"><MapPin size={17} /> Ljubljana, Slovenija</span><div className="quick-pills" aria-label={l(lang,"Rental presets","Hitri termini")}>{quickChoices.map(([key, en, sl]) => <button type="button" className={preset === key ? "selected" : ""} aria-pressed={preset === key} key={key} onClick={() => {setPreset(key);setRange(quickInterval(key,state.settings));setError("");}}>{l(lang,en,sl)}</button>)}</div></div>
     <div className="search-controls">
-      <Field label={l(lang,"Pickup","Prevzem")}><input type="datetime-local" required value={range.pickup} onChange={(event) => change("pickup",event.target.value)} /></Field>
-      <Field label={l(lang,"Return","Vračilo")}><input type="datetime-local" required value={range.returnAt} onChange={(event) => change("returnAt",event.target.value)} /></Field>
+      <RentalTime label={l(lang,"Pickup","Prevzem")} value={range.pickup} onChange={(value) => change("pickup",value)} lang={lang} />
+      <RentalTime label={l(lang,"Return","Vračilo")} value={range.returnAt} onChange={(value) => change("returnAt",value)} lang={lang} />
       <button className="btn primary search-cta"><Search size={18} />{l(lang,"Find a car","Poišči vozilo")}</button>
     </div>
     {error && <Notice error>{error}</Notice>}
@@ -42,12 +57,44 @@ function SearchBar({ state, lang, initial, onSearch }: { state: Store; lang: Lan
 }
 function PublicHeader({ brand, lang, language }: Pick<Props,"brand"|"lang"|"language">) {
   const [menu, setMenu] = useState(false);
-  const links = [[l(lang,"The fleet","Vozila"),"/cars"],[l(lang,"How it works","Kako deluje"),"/#how-it-works"],["FAQ","/faq"],[l(lang,"Contact","Kontakt"),"/contact"]];
-  return <header className="public-header"><div className="shell header-inner"><Brand brand={brand} /><nav className={"public-nav" + (menu ? " menu-open" : "")} aria-label="Main navigation">{links.map(([label,href]) => <Link key={href} href={href} onClick={() => setMenu(false)}>{label}</Link>)}</nav><div className="header-actions">
-    <button className="lang-btn" onClick={() => language(lang === "en" ? "sl" : "en")} aria-label={lang === "en" ? "Preklopi v slovenščino" : "Switch to English"}>{lang === "en" ? "SL" : "EN"}</button>
-    <Link href="/admin" className="btn quiet admin-link">{l(lang,"Owner dashboard","Skrbniška plošča")} <ArrowUpRight size={15} /></Link>
-    <button className="icon-btn menu-toggle" aria-expanded={menu} aria-label={menu ? "Close menu" : "Open menu"} onClick={() => setMenu(!menu)}>{menu ? <X size={22} /> : <Menu size={22} />}</button>
-  </div></div></header>;
+  const links = [
+    [l(lang,"The fleet","Vozila"),"/cars"],
+    [l(lang,"How it works","Kako deluje"),"/#how-it-works"],
+    [l(lang,"FAQ","Pogosta vprašanja"),"/faq"],
+    [l(lang,"Contact","Kontakt"),"/contact"],
+  ];
+  const switchLabel = l(lang, "Preklopi v slovenščino", "Switch to English");
+  function switchLanguage() {
+    language(lang === "en" ? "sl" : "en");
+    setMenu(false);
+  }
+  useEffect(() => {
+    if (!menu) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenu(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [menu]);
+  return <header className="public-header">
+    <div className="shell header-inner">
+      <Brand brand={brand} />
+      <nav id="storefront-menu" className={"public-nav" + (menu ? " menu-open" : "")} aria-label={l(lang,"Main navigation","Glavni meni")}>
+        {links.map(([label,href]) => <Link key={href} href={href} onClick={() => setMenu(false)}>{label}</Link>)}
+        <div className="mobile-menu-footer">
+          <button type="button" className="btn secondary" aria-label={switchLabel} onClick={switchLanguage}>{l(lang,"Slovenščina","English")}</button>
+          <Link href="/admin" className="text-link" onClick={() => setMenu(false)}>{l(lang,"Owner dashboard","Skrbniška plošča")} <ArrowUpRight size={15} /></Link>
+        </div>
+      </nav>
+      <div className="header-actions">
+        <button className="lang-btn desktop-lang" onClick={switchLanguage} aria-label={switchLabel}>{l(lang,"SL","EN")}</button>
+        <Link href="/admin" className="btn quiet admin-link">{l(lang,"Owner dashboard","Skrbniška plošča")} <ArrowUpRight size={15} /></Link>
+        <button className="icon-btn menu-toggle" aria-controls="storefront-menu" aria-expanded={menu}
+          aria-label={menu ? l(lang,"Close menu","Zapri meni") : l(lang,"Open menu","Odpri meni")}
+          onClick={() => setMenu(!menu)}>{menu ? <X size={21} /> : <Menu size={21} />}</button>
+      </div>
+    </div>
+  </header>;
 }
 function Footer({ brand, lang }: Pick<Props,"brand"|"lang">) {
   return <footer className="footer"><div className="shell footer-inner"><div><Brand brand={brand} /><p>{l(lang,"Car rental concept · Ljubljana, Slovenia","Koncept najema vozil · Ljubljana, Slovenija")}</p></div><nav aria-label="Footer"><Link href="/cars">{l(lang,"Fleet","Vozila")}</Link><Link href="/terms">{l(lang,"Terms","Pogoji")}</Link><Link href="/privacy">{l(lang,"Privacy","Zasebnost")}</Link><Link href="/admin">{l(lang,"Owner dashboard","Skrbniška plošča")}</Link></nav></div></footer>;
@@ -57,15 +104,17 @@ function Home({ state, lang }: Pick<Props,"state"|"lang">) {
   return <>
     <section className="shell hero">
       <div className="hero-content">
-        <div className="eyebrow hero-kicker"><span className="dot" /> {l(lang,"CAR RENTAL IN LJUBLJANA","NAJEM VOZIL V LJUBLJANI")}</div>
-        <h1>{l(lang,"The road","Pot je")}<br />{" "}{l(lang,"is yours.","vaša.")}</h1>
-        <p>{l(lang,"Find the right car for a day in the city, a weekend away or the roads in between.","Poiščite pravo vozilo za dan v mestu, vikend pobeg ali pot vmes.")}</p>
-        <Link className="text-link hero-link" href="/cars">{l(lang,"Explore the fleet","Raziščite vozila")} <ArrowDown size={17} /></Link>
+        <h1>{l(lang,"Car rental in Ljubljana","Najem vozil v Ljubljani")}<span>.</span></h1>
+        <p>{l(lang,"Choose when you need a car and see what’s available for your trip.","Izberite termin in preverite, katera vozila so na voljo.")}</p>
       </div>
-      <div className="hero-media"><img src="/demo/hero.webp" fetchPriority="high" alt="Silver coupé in front of concrete architecture" /><span className="media-label">{l(lang,"Illustrative image","Simbolična fotografija")}</span></div>
+      <div className="hero-media">
+        <img src="/demo/hero.webp" width={1440} height={960} fetchPriority="high"
+          alt={l(lang,"Silver car in front of a concrete building","Srebrn avtomobil pred betonsko stavbo")} />
+        <span className="media-label">{l(lang,"Illustrative image","Simbolična fotografija")}</span>
+      </div>
       <div className="hero-search"><SearchBar state={state} lang={lang} onSearch={(range) => router.push("/cars" + intervalQuery(range))} /></div>
     </section>
-    <section className="shell section fleet-section"><div className="section-head spread"><div><span className="eyebrow">{l(lang,"THE FLEET","VOZNI PARK")}</span><h2>{l(lang,"Find your drive.","Poiščite svoje vozilo.")}</h2></div><Link className="btn secondary" href="/cars">{l(lang,"All vehicles","Vsa vozila")} <ArrowUpRight size={16} /></Link></div>
+    <section className="shell section fleet-section"><div className="section-head spread"><h2>{l(lang,"Our fleet","Vozni park")}</h2><Link className="btn secondary" href="/cars">{l(lang,"All vehicles","Vsa vozila")} <ArrowUpRight size={16} /></Link></div>
       <div className="grid-cars">{state.vehicles.filter(isListed).slice(0,3).map((vehicle) => <CarCard key={vehicle.id} vehicle={vehicle} lang={lang} href={"/cars/" + vehicle.slug} />)}</div>
     </section>
     <section className="how section" id="how-it-works"><div className="shell"><div className="section-head"><h2>{l(lang,"How it works","Kako deluje")}</h2></div><div className="features">{[
@@ -92,26 +141,26 @@ function Browse({ state, lang, selected }: Pick<Props,"state"|"lang"> & { select
   }
   let range: Interval | undefined;
   let error = "";
-  if (selected) try { range = validateWindow(toInterval(selected.pickup,selected.returnAt),state.settings); } catch (e) { error = (e as Error).message; }
+  if (selected) try { range = validateWindow(toInterval(selected.pickup,selected.returnAt),state.settings); } catch (e) { error = rentalMessage(e,state,lang); }
   const rate = (v: Vehicle) => range ? rentalQuote(v,state,range).total : v.dailyRate;
   const vehicles = state.vehicles.filter((v) => isListed(v)
     && (!range || !unavailable(v,state,range)) && (!category || v.category === category) && (!transmission || v.transmission === transmission)
     && (!fuel || v.fuel === fuel) && (!seats || v.seats >= Number(seats)) && (!max || rate(v) <= Number(max) * 100));
   if (sort) vehicles.sort((a,b) => (rate(a)-rate(b)) * (sort === "desc" ? -1 : 1));
   return <main className="shell section subpage">
-    <Breadcrumb items={[{label:"Home",href:"/"},{label:l(lang,"Fleet","Vozila")}]} />
+    <Breadcrumb items={[{label:l(lang,"Home","Domov"),href:"/"},{label:l(lang,"Fleet","Vozila")}]} />
     <div className="section-head"><h1>{l(lang,"The fleet.","Vozni park.")}</h1><p>{l(lang,"Set your dates to see availability and the full rental price.","Izberite datume za prikaz razpoložljivosti in celotne cene najema.")}</p></div>
     <SearchBar key={selected?.pickup + "|" + selected?.returnAt} state={state} lang={lang} initial={selected} onSearch={(local) => {
       const next = new URLSearchParams(params.toString()); next.set("pickup",local.pickup);next.set("return",local.returnAt);router.push("/cars?" + next.toString());
     }} />
     {error && <Notice error>{error}</Notice>}
     <div className="filters">
-      <Field label={l(lang,"Class","Razred")}><select value={category} onChange={(e) => update("class",e.target.value)}><option value="">All</option>{categories.map((v) => <option key={v}>{v}</option>)}</select></Field>
-      <Field label={l(lang,"Transmission","Menjalnik")}><select value={transmission} onChange={(e) => update("gear",e.target.value)}><option value="">All</option><option>Automatic</option><option>Manual</option></select></Field>
-      <Field label={l(lang,"Fuel","Gorivo")}><select value={fuel} onChange={(e) => update("fuel",e.target.value)}><option value="">All</option>{["Petrol","Diesel","Hybrid","Electric"].map((v) => <option key={v}>{v}</option>)}</select></Field>
-      <Field label={l(lang,"Seats","Sedeži")}><select value={seats} onChange={(e) => update("seats",e.target.value)}><option value="">All</option><option value="4">4+</option><option value="5">5+</option><option value="7">7+</option></select></Field>
-      <Field label={l(lang,"Max price (€)","Najvišja cena (€)")}><select value={max} onChange={(e) => update("max",e.target.value)}><option value="">Any</option>{[50,100,200,400,800].map((v) => <option key={v}>{v}</option>)}</select></Field>
-      <Field label={l(lang,"Sort by","Razvrsti po")}><select value={sort} onChange={(e) => update("sort",e.target.value)}><option value="">Featured</option><option value="asc">Price low to high</option><option value="desc">Price high to low</option></select></Field>
+      <Field label={l(lang,"Class","Razred")}><select value={category} onChange={(e) => update("class",e.target.value)}><option value="">{l(lang,"All","Vse")}</option>{categories.map((v) => <option key={v} value={v}>{txVehicle(v,lang)}</option>)}</select></Field>
+      <Field label={l(lang,"Transmission","Menjalnik")}><select value={transmission} onChange={(e) => update("gear",e.target.value)}><option value="">{l(lang,"All","Vse")}</option><option value="Automatic">{txVehicle("Automatic",lang)}</option><option value="Manual">{txVehicle("Manual",lang)}</option></select></Field>
+      <Field label={l(lang,"Fuel","Gorivo")}><select value={fuel} onChange={(e) => update("fuel",e.target.value)}><option value="">{l(lang,"All","Vse")}</option>{["Petrol","Diesel","Hybrid","Electric"].map((v) => <option key={v} value={v}>{txVehicle(v,lang)}</option>)}</select></Field>
+      <Field label={l(lang,"Seats","Sedeži")}><select value={seats} onChange={(e) => update("seats",e.target.value)}><option value="">{l(lang,"All","Vse")}</option><option value="4">4+</option><option value="5">5+</option><option value="7">7+</option></select></Field>
+      <Field label={l(lang,"Max price (€)","Najvišja cena (€)")}><select value={max} onChange={(e) => update("max",e.target.value)}><option value="">{l(lang,"Any","Vse")}</option>{[50,100,200,400,800].map((v) => <option key={v}>{v}</option>)}</select></Field>
+      <Field label={l(lang,"Sort by","Razvrsti po")}><select value={sort} onChange={(e) => update("sort",e.target.value)}><option value="">{l(lang,"Featured","Priporočeno")}</option><option value="asc">{l(lang,"Price low to high","Najprej nižja cena")}</option><option value="desc">{l(lang,"Price high to low","Najprej višja cena")}</option></select></Field>
     </div>
     <p className="results">{vehicles.length} {l(lang,"vehicles","vozil")}</p>
     <div className="grid-cars">{vehicles.map((v) => <CarCard key={v.id} vehicle={v} lang={lang} href={"/cars/" + v.slug + (params.size ? "?" + params.toString() : "")} quote={range ? rentalQuote(v,state,range) : undefined} available={!!range} />)}</div>
@@ -119,18 +168,21 @@ function Browse({ state, lang, selected }: Pick<Props,"state"|"lang"> & { select
   </main>;
 }
 function TripFields({ local, set, lang }: { local: LocalRange; set: (value: LocalRange) => void; lang: Lang }) {
-  return <div className="fields-two"><Field label={l(lang,"Pickup","Prevzem")}><input type="datetime-local" required value={local.pickup} onChange={(e) => set({...local,pickup:e.target.value})} /></Field><Field label={l(lang,"Return","Vračilo")}><input type="datetime-local" required value={local.returnAt} onChange={(e) => set({...local,returnAt:e.target.value})} /></Field></div>;
+  return <div className="trip-fields">
+    <RentalTime label={l(lang,"Pickup","Prevzem")} value={local.pickup} onChange={(pickup) => set({...local,pickup})} lang={lang} />
+    <RentalTime label={l(lang,"Return","Vračilo")} value={local.returnAt} onChange={(returnAt) => set({...local,returnAt})} lang={lang} />
+  </div>;
 }
-function tripCheck(vehicle: Vehicle, state: Store, local: LocalRange) {
+function tripCheck(vehicle: Vehicle, state: Store, local: LocalRange, lang: Lang) {
   try {
     const range = validateWindow(toInterval(local.pickup,local.returnAt),state.settings);
-    return { price: rentalQuote(vehicle,state,range), problem: unavailable(vehicle,state,range) };
-  } catch (e) { return { problem:(e as Error).message }; }
+    return { price: rentalQuote(vehicle,state,range), problem: unavailable(vehicle,state,range,undefined,lang) };
+  } catch (e) { return { problem:rentalMessage(e,state,lang) }; }
 }
 function Detail({ vehicle, state, lang, selected }: Pick<Props,"state"|"lang"> & { vehicle: Vehicle; selected?: LocalRange }) {
   const params = useSearchParams();
   const [local,set] = useState(selected ?? quickInterval("today",state.settings));
-  const { price, problem } = tripCheck(vehicle,state,local);
+  const { price, problem } = tripCheck(vehicle,state,local,lang);
   const [openedAt] = useState(Date.now);
   const [activePhoto,setActivePhoto] = useState(0);
   const photos = [{photo:vehicle.photo,photoSource:vehicle.photoSource,photoCredit:vehicle.photoCredit},...(vehicle.gallery ?? [])];
@@ -139,16 +191,16 @@ function Detail({ vehicle, state, lang, selected }: Pick<Props,"state"|"lang"> &
   const bookingHref = "/booking/" + vehicle.id + intervalQuery(local);
   return <main className="shell section subpage"><Breadcrumb items={[{label:l(lang,"Fleet","Vozila"),href:"/cars"+(params.size ? "?"+params.toString() : "")},{label:vehicleName(vehicle)}]} />
     <div className="detail-layout">
-      <div className="detail-main"><span className="eyebrow">{vehicle.category} · {vehicle.year}</span><h1>{vehicleName(vehicle)}</h1><ImageCar vehicle={{...vehicle,...shownPhoto}} lang={lang} />
+      <div className="detail-main"><span className="eyebrow">{txVehicle(vehicle.category,lang)} · {vehicle.year}</span><h1>{vehicleName(vehicle)}</h1><ImageCar vehicle={{...vehicle,...shownPhoto}} lang={lang} />
         {photos.length>1&&<div className="gallery-picks">{photos.map((item,index)=><button type="button" key={item.photo} className="icon-btn" aria-label={l(lang,"View photo","Prikaži fotografijo")+" "+(index+1)} aria-pressed={activePhoto===index} onClick={()=>setActivePhoto(index)}><img src={item.photo} alt="" /></button>)}</div>}
-        {shownPhoto.photoCredit && <p className="credit">Photo by {shownPhoto.photoCredit.author} · <a href={shownPhoto.photoCredit.url} target="_blank" rel="noreferrer">{shownPhoto.photoCredit.license} ↗</a></p>}
+        {shownPhoto.photoCredit && <p className="credit">{l(lang,"Photo by","Avtor fotografije")} {shownPhoto.photoCredit.author} · <a href={shownPhoto.photoCredit.url} target="_blank" rel="noreferrer">{shownPhoto.photoCredit.license} ↗</a></p>}
         <p className="detail-description">{lang === "sl" ? vehicle.descriptionSl : vehicle.description}</p>
-        <div className="spec-grid">{[[l(lang,"Transmission","Menjalnik"),vehicle.transmission],[l(lang,"Fuel","Gorivo"),vehicle.fuel],[l(lang,"Seats","Sedeži"),vehicle.seats],[l(lang,"Doors","Vrata"),vehicle.doors],[l(lang,"Luggage","Prtljaga"),vehicle.luggage],[l(lang,"Color","Barva"),vehicle.color]].filter(([,v]) => v).map(([label,value]) => <div key={label}><small>{label}</small><b>{value}</b></div>)}</div>
-        <div className="detail-info"><h3>{l(lang,"Pickup and requirements","Prevzem in pogoji")}</h3><p><MapPin size={17} /> {state.settings.address}</p><p><Clock3 size={17} />{state.settings.open}–{state.settings.close} · Europe/Ljubljana</p><p><ShieldCheck size={17} />{l(lang,"Original driving licence and ID","Izvirnik vozniškega dovoljenja in osebnega dokumenta")}{vehicle.minAge ? " · " + vehicle.minAge + "+" : ""}{vehicle.minLicenseYears ? " · Licence " + vehicle.minLicenseYears + "+ years" : ""}</p>{[...vehicle.features,...vehicle.rules].length > 0 && <p>{[...vehicle.features,...vehicle.rules].join(" · ")}</p>}</div>
+        <div className="spec-grid">{[[l(lang,"Transmission","Menjalnik"),txVehicle(vehicle.transmission,lang)],[l(lang,"Fuel","Gorivo"),txVehicle(vehicle.fuel,lang)],[l(lang,"Seats","Sedeži"),vehicle.seats],[l(lang,"Doors","Vrata"),vehicle.doors],[l(lang,"Luggage","Prtljaga"),vehicle.luggage],[l(lang,"Color","Barva"),txVehicle(vehicle.color,lang)]].filter(([,v]) => v).map(([label,value]) => <div key={label}><small>{label}</small><b>{value}</b></div>)}</div>
+        <div className="detail-info"><h3>{l(lang,"Pickup and requirements","Prevzem in pogoji")}</h3><p><MapPin size={17} /> {state.settings.address}</p><p><Clock3 size={17} />{state.settings.open}–{state.settings.close} · Europe/Ljubljana</p><p><ShieldCheck size={17} />{l(lang,"Original driving licence and ID","Izvirnik vozniškega dovoljenja in osebnega dokumenta")}{vehicle.minAge ? " · " + vehicle.minAge + "+" : ""}{vehicle.minLicenseYears ? l(lang," · Licence "," · Vozniško dovoljenje ") + vehicle.minLicenseYears + l(lang,"+ years","+ let") : ""}</p>{[...vehicle.features,...vehicle.rules].length > 0 && <p>{[...vehicle.features,...vehicle.rules].map((item) => txVehicle(item,lang)).join(" · ")}</p>}</div>
         <div className="detail-info"><h3>{l(lang,"Upcoming unavailable dates","Prihajajoči zasedeni termini")}</h3>{occupied.length ? occupied.slice(0,6).map((item) => <p key={item.pickup+item.returnAt}>{formatDate(item.pickup,lang)} – {formatDate(item.returnAt,lang)}</p>) : <p>{l(lang,"Choose your dates to check availability.","Izberite datume za preverjanje razpoložljivosti.")}</p>}{state.windows.filter((item) => item.vehicleId === vehicle.id).map((item) => <p key={item.id}>{l(lang,"Bookable window","Obdobje najema")} · {formatDate(item.pickup,lang)} – {formatDate(item.returnAt,lang)}</p>)}</div>
       </div>
       <aside className="booking-panel"><h3>{l(lang,"Plan your rental","Načrtujte najem")}</h3><TripFields local={local} set={set} lang={lang} />{price && <QuoteCard quote={price} lang={lang} />}
-        {problem ? <><Notice error>{problem}</Notice><div className="inline-actions"><button className="btn secondary" onClick={() => set(quickInterval("weekend",state.settings))}>Weekend</button><Link className="btn secondary" href={"/cars" + intervalQuery(local)}>{l(lang,"Other cars","Druga vozila")}</Link></div></>
+        {problem ? <><Notice error>{problem}</Notice><div className="inline-actions"><button className="btn secondary" onClick={() => set(quickInterval("weekend",state.settings))}>{l(lang,"Weekend","Vikend")}</button><Link className="btn secondary" href={"/cars" + intervalQuery(local)}>{l(lang,"Other cars","Druga vozila")}</Link></div></>
           : <Link className="btn primary full" href={bookingHref}>{l(lang,"Request this car","Pošlji povpraševanje")} <ArrowRight size={18} /></Link>}
       </aside>
     </div>
@@ -163,7 +215,7 @@ function Book({ vehicle, state, lang, perform, selected }: Pick<Props,"state"|"l
   const [pending,setPending] = useState(false);
   const [requestId,setRequestId] = useState("");
   const [error,setError] = useState("");
-  const { price,problem } = tripCheck(vehicle,state,local);
+  const { price,problem } = tripCheck(vehicle,state,local,lang);
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!review) {setReview(true);setError("");return;}
@@ -173,13 +225,13 @@ function Book({ vehicle, state, lang, perform, selected }: Pick<Props,"state"|"l
     try {
       const receipt = await perform({ type:"request", id, vehicleId:vehicle.id, ...local, ...data, accept:true, eligibility:true });
       if (receipt) router.push("/booking/success?ref=" + encodeURIComponent(receipt.ref));
-    } catch (e) {setError((e as Error).message);} finally {setPending(false);}
+    } catch (e) {setError(rentalMessage(e,state,lang));} finally {setPending(false);}
   }
   return <main className="shell section subpage"><Breadcrumb items={[{ label:l(lang,"Fleet","Vozila"),href:"/cars" },{label:vehicleName(vehicle),href:"/cars/"+vehicle.slug+intervalQuery(local)},{label:l(lang,"Booking request","Povpraševanje")}]} />
     <div className="section-head"><h1>{l(lang,"Request your car.","Pošljite povpraševanje.")}</h1><p>{l(lang,"The rental owner reviews your request before confirmation.","Skrbnik pregleda vaše povpraševanje pred potrditvijo.")}</p></div>
     <div className="detail-layout"><form className="panel form-stack" onSubmit={submit}>
       <h3>{review ? l(lang,"Review request","Pregled povpraševanja") : l(lang,"Your details","Vaši podatki")}</h3>
-      {review ? <div className="review-lines"><b>{data.name}</b><span>{data.email} · {data.phone}</span><span>{local.pickup.replace("T"," ")} – {local.returnAt.replace("T"," ")}</span>{data.note && <p>{data.note}</p>}</div> : <>
+      {review ? <div className="review-lines"><b>{data.name}</b><span>{data.email} · {data.phone}</span><span>{formatDate(local.pickup,lang)} – {formatDate(local.returnAt,lang)}</span>{data.note && <p>{data.note}</p>}</div> : <>
         <TripFields local={local} set={set} lang={lang} />
         <Field label={l(lang,"Full name","Ime in priimek")}><input autoComplete="name" value={data.name} minLength={2} maxLength={200} required onChange={(e) => setData({...data,name:e.target.value})} /></Field>
         <div className="fields-two"><Field label={l(lang,"Email","E-pošta")}><input type="email" autoComplete="email" required value={data.email} onChange={(e) => setData({...data,email:e.target.value})} /></Field><Field label={l(lang,"Phone","Telefon")}><input type="tel" autoComplete="tel" required value={data.phone} onChange={(e) => setData({...data,phone:e.target.value})} /></Field></div>

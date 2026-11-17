@@ -9,6 +9,7 @@ import { blockReasons, categories, fuels, transmissions, vehicleName, type Inter
 import { isListed, type Command } from "@/lib/demo/actions";
 import { parseVehicleDescription } from "@/lib/demo/quick-entry";
 import { CarCard, Field, ImageCar, l, Notice, type Lang, type Perform } from "./common";
+import { RentalTime } from "./rental-time";
 import { VoiceButton } from "./voice";
 
 export type Run = (action: Command, message?: string) => Promise<boolean>;
@@ -126,11 +127,14 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
   const numberField=(key:"year"|"seats"|"doors"|"luggage"|"minAge"|"minLicenseYears"|"dailyRate"|"deposit",label:string,price=false)=><Field label={label+(untouched.includes(key)?" · review":"")}><input type="number" min={key==="year"?1900:0} step={price?".01":"1"} value={price?v[key]/100:v[key]} onChange={(e)=>set(key,Math.round(Number(e.target.value)*(price?100:1)))} /></Field>;
   return <>
     <section className="panel quick-entry"><div className="section-mini"><Sparkles size={20} /><h3>{l(lang,"Describe a car or offer","Opišite vozilo ali ponudbo")}</h3></div>
-      <form className="form-stack" onSubmit={describe}><Field label={l(lang,"Describe it in your own words","Opišite s svojimi besedami")}><textarea rows={2} placeholder="Black VW T-Cross 2023, automatic, €45 per day, €200 deposit, Friday to Monday" value={source} onChange={(e)=>setSource(e.target.value)} /></Field>
+      <form className="form-stack" onSubmit={describe}><Field label={l(lang,"Describe it in your own words","Opišite s svojimi besedami")}><textarea rows={2} placeholder={l(lang,"Black VW T-Cross 2023, automatic, €45 per day, €200 deposit, Friday to Monday","Črn VW T-Cross 2023, samodejni menjalnik, 45 € na dan, 200 € varščine, od petka do ponedeljka")} value={source} onChange={(e)=>setSource(e.target.value)} /></Field>
         <div className="spread quick-bottom"><VoiceButton lang={lang} onText={setSource} /><button className="btn primary" disabled={!source.trim()}>{l(lang,"Build draft","Pripravi osnutek")}</button></div>
       </form>{note && <Notice>{note}</Notice>}
       {draft && <div className="form-stack draft-range"><h3>{draft.kind==="offer"?"Proposed price offer":"Proposed availability window"}</h3>
-        <div className="fields-two"><Field label="From"><input type="datetime-local" value={draft.range.pickup} onChange={(e)=>setDraft({...draft,range:{...draft.range,pickup:e.target.value}})} /></Field><Field label="Until"><input type="datetime-local" value={draft.range.returnAt} onChange={(e)=>setDraft({...draft,range:{...draft.range,returnAt:e.target.value}})} /></Field></div>
+        <div className="trip-fields">
+          <RentalTime label={l(lang,"From","Od")} value={draft.range.pickup} onChange={(pickup)=>setDraft({...draft,range:{...draft.range,pickup}})} lang={lang} required={false} />
+          <RentalTime label={l(lang,"Until","Do")} value={draft.range.returnAt} onChange={(returnAt)=>setDraft({...draft,range:{...draft.range,returnAt}})} lang={lang} required={false} />
+        </div>
         {(draft.kind==="offer" || draft.vehicleId || /\b(set|update|nastavi|spremeni)\b/i.test(source)) && <div className="inline-actions"><select aria-label="Apply to vehicle" value={draft.vehicleId ?? ""} onChange={(e)=>setDraft({...draft,vehicleId:e.target.value || undefined})}><option value="">Select vehicle</option>{state.vehicles.filter((car)=>!car.archived).map((car)=><option key={car.id} value={car.id}>{vehicleName(car)} · {car.plate || car.year}</option>)}</select>
           {draft.kind==="offer" && <Field label="Daily rate (€)"><input type="number" min="1" value={(draft.dailyRate ?? 0)/100} onChange={(e)=>setDraft({...draft,dailyRate:Math.round(+e.target.value*100)})} /></Field>}
           <button type="button" className="btn primary" disabled={!draft.vehicleId} onClick={async()=>{if(!draft.vehicleId)return;const command=draft.kind==="offer"?{type:"offer" as const,dailyRate:draft.dailyRate ?? 0}:{type:"window" as const};if(await run({...command,vehicleId:draft.vehicleId,...draft.range},"Schedule saved."))setDraft(undefined);}}>Apply schedule</button></div>}
@@ -189,7 +193,10 @@ export function ScheduleEditor({state,run,lang,blocks=false}:FleetProps & {block
   return <div className="schedule-layout"><form className="panel form-stack" onSubmit={change}><h3>{blocks?"Block a vehicle":"Add a schedule"}</h3>
     <Field label="Vehicle"><select value={vehicleId} onChange={(e)=>setVehicle(e.target.value)}>{state.vehicles.filter((v)=>!v.archived).map((v)=><option value={v.id} key={v.id}>{vehicleName(v)}</option>)}</select></Field>
     {!blocks&&<Field label="Schedule type"><select value={mode} onChange={(e)=>setMode(e.target.value as "offer"|"window")}><option value="offer">Temporary daily rate</option><option value="window">Bookable window</option></select></Field>}
-    <div className="fields-two"><Field label="From"><input type="datetime-local" required value={range.pickup} onChange={(e)=>setRange({...range,pickup:e.target.value})}/></Field><Field label="Until"><input type="datetime-local" required value={range.returnAt} onChange={(e)=>setRange({...range,returnAt:e.target.value})}/></Field></div>
+    <div className="trip-fields">
+      <RentalTime label={l(lang,"From","Od")} value={range.pickup} onChange={(pickup)=>setRange({...range,pickup})} lang={lang} />
+      <RentalTime label={l(lang,"Until","Do")} value={range.returnAt} onChange={(returnAt)=>setRange({...range,returnAt})} lang={lang} />
+    </div>
     {mode==="offer"&&<Field label="Daily rate (€)"><input type="number" min="1" step=".01" value={rate} onChange={(e)=>setRate(+e.target.value)}/></Field>}
     {mode==="block"&&<><Field label="Reason"><select value={reason} onChange={(e)=>setReason(e.target.value as typeof blockReasons[number])}>{blockReasons.map((x)=><option key={x}>{x}</option>)}</select></Field><Field label="Internal note"><input value={note} onChange={(e)=>setNote(e.target.value)}/></Field></>}
     {mode==="window"&&<p className="muted">After adding a bookable window, requests must fit inside one of the vehicle’s windows.</p>}

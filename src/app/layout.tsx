@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/geist";
-import "@fontsource-variable/archivo-narrow";
+import "@fontsource-variable/instrument-sans";
 import "./globals.css";
 import { brand } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { default: brand + " | Car rental concept", template: "%s | " + brand },
-  description: "Browse cars, get a rental quote and request a pickup in Ljubljana.",
+  title: { default: brand + " | Najem vozil v Ljubljani", template: "%s | " + brand },
+  description: "Izberite vozilo in termin, preverite ceno ter pošljite povpraševanje za najem v Ljubljani.",
   robots: { index: false, follow: false },
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <html lang="en" data-scroll-behavior="smooth"><body>{children}</body></html>;
+  return <html lang="sl" data-scroll-behavior="smooth"><body>{children}</body></html>;
 }

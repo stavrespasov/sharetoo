@@ -11,5 +11,5 @@ export default async function Page({ params }: { params: Promise<{ path?: string
   const adminPage = first === "admin" && (!second || (["login", "calendar", "customers", "settings", "offers"].includes(second) && !third)
     || (second === "vehicles" && !fourth) || (second === "bookings" && (!fourth || fourth === "contract") && path.length <= 4));
   if (!publicPage && !adminPage) notFound();
-  return <Suspense fallback={<main className="shell section">Loading {brand}…</main>}><Experience brand={brand} hosted={hosted()} /></Suspense>;
+  return <Suspense fallback={<main className="shell section">Nalaganje …</main>}><Experience brand={brand} hosted={hosted()} /></Suspense>;
 }

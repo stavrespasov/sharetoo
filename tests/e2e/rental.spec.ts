@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 const at = (days:number,hour:number) => DateTime.now().setZone("Europe/Ljubljana").startOf("day").plus({days}).set({hour}).toFormat("yyyy-MM-dd'T'HH:mm");
 const bookingQuery = () => new URLSearchParams({pickup:at(12,10),return:at(13,10)}).toString();
 async function openOwner(page:Page) {
+  await page.addInitScript(() => { if (!localStorage.getItem("sharetoo-lang")) localStorage.setItem("sharetoo-lang", "en"); });
   await page.goto("/admin");
   await page.getByRole("button",{name:"Enter owner demo"}).click();
   await expect(page.getByRole("heading",{name:"Overview",exact:true})).toBeVisible();
@@ -82,12 +83,54 @@ test("voice draft and denial support text entry",async ({page})=>{
 });
 test("key pages fit viewport and load with English and Slovenian controls",async ({page})=>{
   await openOwner(page);
-  for(const [path,heading] of [["/","The road is yours."],["/cars","The fleet."],["/admin","Overview"],["/admin/vehicles","Fleet"],["/admin/bookings","Bookings"],["/admin/calendar","Calendar"],["/admin/offers","Offers"],["/admin/customers","Customers"],["/admin/settings","Settings"]]){
+  for(const [path,heading] of [["/","Car rental in Ljubljana."],["/cars","The fleet."],["/admin","Overview"],["/admin/vehicles","Fleet"],["/admin/bookings","Bookings"],["/admin/calendar","Calendar"],["/admin/offers","Offers"],["/admin/customers","Customers"],["/admin/settings","Settings"]]){
     await page.goto(path);
     await expect(page.getByRole("heading",{name:heading,exact:true})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
   await page.goto("/");
+  await expect(page.getByRole("heading",{name:"Car rental in Ljubljana."})).toBeVisible();
+  const menu = page.getByRole("button",{name:"Open menu"});
+  if (await menu.isVisible()) await menu.click();
   await page.getByRole("button",{name:"Preklopi v slovenščino"}).click();
   await expect(page.getByRole("button",{name:"Poišči vozilo"})).toBeVisible();
+});
+
+test("Slovenian mobile search displays the car and keeps date controls inside their rows", async ({page}) => {
+  await page.setViewportSize({width:320,height:760});
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("lang","sl");
+  await expect(page.getByRole("heading",{name:"Najem vozil v Ljubljani."})).toBeVisible();
+  const photo = page.getByRole("img",{name:"Srebrn avtomobil pred betonsko stavbo"});
+  await expect(photo).toBeVisible();
+  await expect.poll(() => photo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  expect((await photo.boundingBox())!.height).toBeGreaterThan(150);
+
+  const pickup = page.getByRole("group",{name:"Prevzem"});
+  const returnTime = page.getByRole("group",{name:"Vračilo"});
+  const pickupBox = (await pickup.boundingBox())!;
+  const returnBox = (await returnTime.boundingBox())!;
+  expect(pickupBox.y + pickupBox.height).toBeLessThan(returnBox.y);
+  for (const group of [pickup, returnTime]) {
+    const bounds = (await group.boundingBox())!;
+    for (const input of await group.locator("input").all()) {
+      const box = (await input.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(bounds.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+
+  const [pickupDate] = at(12,10).split("T");
+  const [returnDate] = at(13,10).split("T");
+  await pickup.getByLabel("Prevzem · Datum").fill(pickupDate);
+  await pickup.getByLabel("Prevzem · Ura").fill("10:30");
+  await returnTime.getByLabel("Vračilo · Datum").fill(returnDate);
+  await returnTime.getByLabel("Vračilo · Ura").fill("12:00");
+  await page.getByRole("button",{name:"Poišči vozilo"}).click();
+  await expect(page.getByRole("heading",{name:"Vozni park."})).toBeVisible();
+  const search = new URL(page.url()).searchParams;
+  expect(search.get("pickup")).toBe(pickupDate + "T10:30");
+  expect(search.get("return")).toBe(returnDate + "T12:00");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
 });
