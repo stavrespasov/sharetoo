@@ -83,7 +83,8 @@ test("voice draft and denial support text entry",async ({page})=>{
   await expect(page.getByLabel("Model year",{exact:true})).toHaveValue("2022");
   await expect(page.getByLabel("Daily rate (€)",{exact:true})).toHaveValue("39");
   await page.getByRole("button",{name:"Dictate"}).click();
-  await expect(page.getByText("Microphone unavailable",{exact:false})).toBeVisible();
+  await expect(page.getByText("The browser denied dictation access.",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Record description",exact:true})).toBeVisible();
   await page.getByRole("button",{name:"Save and publish"}).click();
   await expect(page.getByRole("heading",{name:"Fleet",exact:true})).toBeVisible();
   await expect(page.getByRole("row").filter({hasText:"2022"}).filter({hasText:"Volkswagen Golf"})).toBeVisible();

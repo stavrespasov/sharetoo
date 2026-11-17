@@ -24,7 +24,7 @@ Pickup and return are available Monday–Friday from 08:00 to 16:00 (Koper local
 5. Open **Preview draft agreement**. Use **Print / save PDF** for the A4 version. Record the original documents checklist, offline signature, pickup, and return.
 6. Try **Offers** for a scheduled daily rate or bookable window. Use **Calendar** to add a maintenance block. **Settings** can reset the workspace.
 
-Automatic drafts use structured English and Slovenian phrases and an illustrative model catalog. Dictation depends on browser and language support. Keyboard dictation and typing work through the same field. The application does not store raw voice audio. Online image candidates are optional and require selection. The gallery supports owner uploads and shows attribution for chosen Commons photos.
+Automatic drafts use structured English and Slovenian phrases and an illustrative model catalog. Browser dictation depends on language and browser support. If it fails, record a short description or select an audio file to transcribe it on the device. The fallback downloads a speech model on first use and keeps recordings in memory. Keyboard dictation and typing also work through the same field. Online image candidates are optional and require selection. The gallery supports owner uploads and shows attribution for chosen Commons photos.
 
 ## Vercel and shared state
 
