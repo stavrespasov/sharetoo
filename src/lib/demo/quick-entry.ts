@@ -4,23 +4,28 @@ import { catalog } from "./seed";
 import type { Interval, Settings } from "../booking/types";
 
 const models = [
-  [/\b(?:vw|volkswagen)?\s*t[ -]?cross\b/i, catalog[0]],
+  [/\b(?:vw|volkswagen)?\s*(?:t[ -]?cross|te[ -]?kros|t[ -]?kros)\b/i, catalog[0]],
   [/\b(?:bmw\s*)?(?:4 series|serija 4|420[di]|430[di])\b/i, catalog[1]],
   [/\b(?:vw|volkswagen)?\s*golf\b/i, catalog[2]],
 ] as const;
 const colors = [
-  [/\b(?:black|črn[ao]?)\b/i,"Black"],[/\b(?:white|bel[ao]?)\b/i,"White"],
+  [/\b(?:black|crn[ao]?)\b/i,"Black"],[/\b(?:white|bel[ao]?)\b/i,"White"],
   [/\b(?:gray|grey|siv[ao]?)\b/i,"Gray"],[/\b(?:silver|srebrn[ao]?)\b/i,"Silver"],
-  [/\b(?:blue|mod[er][ra]{0,2})\b/i,"Blue"],[/\b(?:red|rdeč[ao]?)\b/i,"Red"],
+  [/\b(?:blue|moder|modr[ao])\b/i,"Blue"],[/\b(?:red|rdec[ao]?)\b/i,"Red"],
+] as const;
+const fuels = [
+  [/\b(?:petrol|gasoline|bencin\w*)\b/i,"Petrol"],[/\b(?:diesel|dizel\w*)\b/i,"Diesel"],
+  [/\b(?:hybrid|hibrid\w*)\b/i,"Hybrid"],[/\b(?:electric|elektricn\w*)\b/i,"Electric"],
 ] as const;
 const weekdays = [
-  /\b(?:monday|ponedeljek|ponedeljka)\b/i, /\b(?:tuesday|torek)\b/i, /\b(?:wednesday|sreda|srede)\b/i,
-  /\b(?:thursday|četrtek)\b/i, /\b(?:friday|petek|petka)\b/i, /\b(?:saturday|sobota|sobote)\b/i, /\b(?:sunday|nedelj[aeo])\b/i,
+  /\b(?:monday|ponedeljek|ponedeljka)\b/i, /\b(?:tuesday|torek|torka)\b/i, /\b(?:wednesday|sred[aeo])\b/i,
+  /\b(?:thursday|cetrtek|cetrtka)\b/i, /\b(?:friday|petek|petka)\b/i, /\b(?:saturday|sobot[aeo])\b/i, /\b(?:sunday|nedelj[aeo])\b/i,
 ];
 const euros = "(?:€\\s*)?(\\d+(?:[.,]\\d{1,2})?)\\s*(?:€|(?:eur(?:os?|ov)?|evr(?:o|ov|a)?))?";
 const daily = new RegExp(euros + "\\s*(?:per day|a day|/\\s*day|na dan|dnevno)", "i");
 const toCents = (value?: string) => value ? Math.round(Number(value.replace(",", ".")) * 100) : undefined;
-const wordDay = (value: string) => weekdays.findIndex((pattern) => pattern.test(value)) + 1;
+const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "");
+const wordDay = (value: string) => weekdays.findIndex((pattern) => pattern.test(fold(value))) + 1;
 
 export function commandDates(source: string, settings: Settings, now: DateTime = DateTime.now()): Interval | undefined {
   const today = now.setZone(zone).startOf("day");
@@ -52,16 +57,20 @@ export function commandDates(source: string, settings: Settings, now: DateTime =
   return { pickup: start.toISODate() + "T" + open, returnAt: end.toISODate() + "T" + settings.close };
 }
 export function parseVehicleDescription(source: string, settings: Settings, now?: DateTime) {
+  const words = fold(source);
   const example = models.find(([pattern]) => pattern.test(source))?.[1];
-  const makeModel = source.match(/\b(Volkswagen|VW|BMW|Audi|Toyota|Škoda|Skoda|Renault|Ford|Hyundai|Kia|Peugeot|Opel|Mercedes(?:-Benz)?|Seat|Fiat|Dacia|Tesla)\s+([\w-]+(?:\s+[\w-]+)?)/i);
-  const make = example?.make ?? (makeModel?.[1].toLowerCase() === "vw" ? "Volkswagen" : makeModel?.[1]);
-  const model = example?.model ?? makeModel?.[2].replace(/\s+(?:19|20)\d{2}$/, "");
+  const makeModel = words.match(/\b(Volkswagen|VW|BMW|Audi|Toyota|Skoda|Renault|Ford|Hyundai|Kia|Peugeot|Opel|Mercedes(?:-Benz)?|Seat|Fiat|Dacia|Tesla|Mazda|Honda|Volvo|Citroen)\s+((?!(?:19|20)\d{2}\b)[\w-]+(?:\s+(?:Cross|Series|Class|Sport|Stepway|Touring|Plus))?)\b/i);
+  const rawMake = makeModel?.[1];
+  const make = example?.make ?? (rawMake?.toLowerCase() === "vw" ? "Volkswagen" : rawMake?.toLowerCase() === "skoda" ? "Škoda" : rawMake);
+  const model = example?.model ?? makeModel?.[2];
   const dayRate = source.match(daily)?.[1];
-  const color = colors.find(([pattern]) => pattern.test(source))?.[1];
+  const color = colors.find(([pattern]) => pattern.test(words))?.[1];
+  const fuel = fuels.find(([pattern]) => pattern.test(words))?.[1];
+  const seats = Number(words.match(/\b([1-9]|1\d|20)\s*(?:seats?|sedez\w*)\b/i)?.[1]) || undefined;
   return {
     example, make, model, color, year: Number(source.match(/\b(?:19|20)\d{2}\b/)?.[0]) || undefined,
     transmission: /automatic|avtomat|samodej/i.test(source) ? "Automatic" as const : /manual|ročn/i.test(source) ? "Manual" as const : undefined,
-    dailyRate: toCents(dayRate),
+    fuel, seats, dailyRate: toCents(dayRate),
     range: commandDates(source,settings,now), intent: /\b(?:offer|ponud)\w*/i.test(source) ? "offer" : /\b(?:set|update|nastavi|spremeni)\b/i.test(source) ? "update" : "vehicle",
   } as const;
 }

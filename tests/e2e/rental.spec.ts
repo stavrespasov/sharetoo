@@ -15,12 +15,11 @@ test("owner publishes, customer requests, owner approves and records handover",a
   await openOwner(page);
   await page.getByRole("link",{name:"Describe a car"}).click();
   await page.getByLabel("Describe it in your own words").fill("Add a black VW T-Cross 2023, automatic, €45 per day");
-  await page.getByRole("button",{name:"Build draft"}).click();
+  await page.getByRole("button",{name:"Fill fields"}).click();
   await expect(page.getByLabel("Model year")).toHaveValue("2023");
   await expect(page.getByLabel("Color",{exact:true})).toHaveValue("Black");
   await page.getByLabel("Model",{exact:true}).fill("T-Cross Weekend Test");
-  await page.getByRole("button",{name:"Confirm reviewed specifications"}).click();
-  await page.getByRole("button",{name:"Publish vehicle"}).click();
+  await page.getByRole("button",{name:"Save and publish"}).click();
   await expect(page.getByRole("heading",{name:"Fleet",exact:true})).toBeVisible();
   await page.goto("/cars?"+bookingQuery());
   const car=page.getByRole("link",{name:"Volkswagen T-Cross Weekend Test",exact:true});
@@ -69,7 +68,7 @@ test("voice draft and denial support text entry",async ({page})=>{
       onresult?: (event:unknown)=>void;
       onerror?: (event:unknown)=>void;
       onend?: ()=>void;
-      start(){attempts++;setTimeout(()=>{if(attempts===1)this.onresult?.({results:[[{transcript:"White VW Golf 2021, 39 euros per day"}]]});else this.onerror?.({error:"not-allowed"});this.onend?.();},40);}
+      start(){attempts++;setTimeout(()=>{if(attempts===1)this.onresult?.({results:[[{transcript:"White VW Golf 2022, 39 euros per day"}]]});else this.onerror?.({error:"not-allowed"});this.onend?.();},40);}
       stop(){this.onend?.();}
       abort(){this.onend?.();}
     }
@@ -79,10 +78,15 @@ test("voice draft and denial support text entry",async ({page})=>{
   await page.getByRole("link",{name:"Describe a car"}).click();
   await page.getByRole("button",{name:"Dictate"}).click();
   await expect(page.getByLabel("Describe it in your own words")).toHaveValue(/White VW Golf/);
+  await expect(page.getByLabel("Make",{exact:true})).toHaveValue("Volkswagen");
+  await expect(page.getByLabel("Model",{exact:true})).toHaveValue("Golf");
+  await expect(page.getByLabel("Model year",{exact:true})).toHaveValue("2022");
+  await expect(page.getByLabel("Daily rate (€)",{exact:true})).toHaveValue("39");
   await page.getByRole("button",{name:"Dictate"}).click();
   await expect(page.getByText("Microphone unavailable",{exact:false})).toBeVisible();
-  await page.getByRole("button",{name:"Build draft"}).click();
-  await expect(page.getByLabel("Make",{exact:true})).toHaveValue("Volkswagen");
+  await page.getByRole("button",{name:"Save and publish"}).click();
+  await expect(page.getByRole("heading",{name:"Fleet",exact:true})).toBeVisible();
+  await expect(page.getByRole("row").filter({hasText:"2022"}).filter({hasText:"Volkswagen Golf"})).toBeVisible();
 });
 test("key pages fit viewport and load with English and Slovenian controls",async ({page})=>{
   await openOwner(page);

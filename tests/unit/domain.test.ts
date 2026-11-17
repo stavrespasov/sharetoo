@@ -94,6 +94,15 @@ describe("quick vehicle entry", () => {
     expect(parseVehicleDescription("Golf",demoSettings,monday).dailyRate).toBeUndefined();
     expect(commandDates("from next month to whenever",demoSettings,monday)).toBeUndefined();
   });
+  it("recognizes a spoken Slovenian vehicle description and explicit specifications", () => {
+    const spoken = "Črn Volkswagen Te kros 2023, samodejni menjalnik, pet vrat, dizel, 5 sedežev, 45 evrov na dan.";
+    expect(parseVehicleDescription(spoken,demoSettings,monday)).toMatchObject({
+      make:"Volkswagen",model:"T-Cross",year:2023,color:"Black",transmission:"Automatic",fuel:"Diesel",seats:5,dailyRate:4500,
+    });
+    expect(parseVehicleDescription("Modra Škoda Octavia, letnik 2021, 39 evrov na dan",demoSettings,monday)).toMatchObject({
+      make:"Škoda",model:"Octavia",color:"Blue",year:2021,dailyRate:3900,
+    });
+  });
   it("recognizes Slovenian pricing and relative availability", () => {
     expect(parseVehicleDescription("Dodaj bel VW Golf 2021, 35 evrov na dan, ta vikend",demoSettings,monday)).toMatchObject({model:"Golf",color:"White",dailyRate:3500,range:{pickup:"2026-11-20T08:00",returnAt:"2026-11-23T16:00"}});
   });

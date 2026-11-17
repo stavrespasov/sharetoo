@@ -13,7 +13,7 @@ export const l = (lang: Lang, en: string, sl: string) => lang === "sl" ? sl : en
 const vehicleLabels: Record<string, string> = {
   Crossover: "Križanec", Coupé: "Kupe", Hatchback: "Kombilimuzina", Estate: "Karavan", Van: "Kombi", Other: "Drugo",
   Automatic: "Samodejni", Manual: "Ročni", Petrol: "Bencin", Diesel: "Dizel", Hybrid: "Hibrid", Electric: "Električni",
-  Graphite: "Grafitna", White: "Bela", Black: "Črna",
+  Graphite: "Grafitna", White: "Bela", Black: "Črna", Gray: "Siva", Silver: "Srebrna", Blue: "Modra", Red: "Rdeča",
   "Air conditioning": "Klimatska naprava", "Winter tyres": "Zimske pnevmatike", "Parking sensors": "Parkirni senzorji",
 };
 export const txVehicle = (value: string, lang: Lang) => lang === "sl" ? vehicleLabels[value] ?? value : value;
