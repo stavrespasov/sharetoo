@@ -172,6 +172,6 @@ export function VoiceRecording({ lang, language, canRecord, onText }: {
         </label>
       </>}
     </div>
-    <small role="status">{phase ? status[phase] : message || t("First use downloads a speech model. Audio stays on this device.", "Ob prvi uporabi se prenese govorni model. Zvok ostane v tej napravi.")}</small>
+    <small role="status">{phase ? status[phase] : message || t("First use downloads a speech model (about 65–105 MB). Audio stays on this device.", "Ob prvi uporabi se prenese govorni model (približno 65–105 MB). Zvok ostane v tej napravi.")}</small>
   </div>;
 }

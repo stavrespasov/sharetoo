@@ -80,7 +80,7 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
     setV((old) => ({ ...old, [key]: value }));
   }
 
-  function prepare(text: string) {
+  function prepare(text: string, fromVoice = false) {
     setSource(text);
     const result = parseVehicleDescription(text, state.settings);
     const targets = state.vehicles.filter((car) => !car.archived && car.id !== initial?.id && result.model && car.model.toLowerCase() === result.model.toLowerCase());
@@ -91,6 +91,10 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
       }
       setDraft({ kind: result.intent === "offer" ? "offer" : "window", range: result.range, existing: true, vehicleId: initial?.id ?? (targets.length === 1 ? targets[0].id : undefined), dailyRate: result.dailyRate });
       setNote(t("Check the dates and save the schedule.", "Preverite datume in shranite termin."));
+      return;
+    }
+    if (fromVoice && (!result.make || !result.model)) {
+      setNote(t("Check the make and model in the transcript, then select Fill fields.", "V prepisu preverite znamko in model, nato izberite Izpolni polja."));
       return;
     }
     if (!result.make && !result.model && (!v.make || !v.model)) {
@@ -186,7 +190,7 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
           <textarea rows={2} placeholder={t("Black VW T-Cross 2023, automatic, €45 per day", "Črn VW T-Cross 2023, samodejni menjalnik, 45 € na dan")} value={source} onChange={(e) => setSource(e.target.value)} />
         </Field>
         <div className="spread quick-bottom">
-          <VoiceButton lang={lang} onText={prepare} />
+          <VoiceButton lang={lang} onText={(text) => prepare(text, true)} />
           <button className="btn secondary" disabled={!source.trim()}>{t("Fill fields", "Izpolni polja")}</button>
         </div>
       </form>
