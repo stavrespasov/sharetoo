@@ -1,4 +1,4 @@
-const library = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.web.min.js";
+const library = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.min.js";
 let model;
 
 async function loadModel() {
@@ -20,8 +20,9 @@ self.onmessage = async ({ data: { samples, language } }) => {
     self.postMessage({ phase: "transcribing" });
     const result = await transcribe(samples, { language, task: "transcribe", max_new_tokens: 96 });
     self.postMessage({ text: result.text.trim() });
-  } catch {
+  } catch (error) {
     model = undefined;
-    self.postMessage({ failed: true });
+    const reason = error instanceof Error ? error.message.replace(/https?:\/\/\S+/g, "[asset URL]").slice(0, 240) : "";
+    self.postMessage({ failed: true, reason });
   }
 };

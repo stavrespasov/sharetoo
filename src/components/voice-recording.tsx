@@ -84,9 +84,13 @@ export function VoiceRecording({ lang, language, canRecord, onText }: {
         worker.current = null;
         finish(operation, unavailable);
       };
-      const receive = ({ data }: MessageEvent<{ phase?: "transcribing"; text?: string; failed?: boolean }>) => {
+      const receive = ({ data }: MessageEvent<{ phase?: "transcribing"; text?: string; failed?: boolean; reason?: string }>) => {
         if (active.current !== operation) return;
-        if (data.failed) { fail(); return; }
+        if (data.failed) {
+          console.warn("On-device transcription failed.", data.reason);
+          fail();
+          return;
+        }
         if (data.phase === "transcribing") { setPhase("transcribing"); return; }
         if (!data.text) {
           finish(operation, t("No speech found. Speak clearly and try again.", "Govor ni bil zaznan. Govorite jasno in poskusite znova."));
