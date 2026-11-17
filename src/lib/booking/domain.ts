@@ -4,13 +4,14 @@ import type { Block, Booking, Interval, Quote, Settings, Status, Vehicle } from 
 export const zone = "Europe/Ljubljana";
 export const hour = 3_600_000;
 export const day = 24 * hour;
+export const handoverHours = { open: "08:00", close: "16:00" } as const;
 export const allocated = new Set<Status>(["CONFIRMED", "PICKED_UP", "RETURNED"]);
 export const transitions: Record<Status, Status[]> = {
   REQUESTED: ["CONFIRMED", "REJECTED", "CANCELLED"],
   CONFIRMED: ["PICKED_UP", "CANCELLED"], PICKED_UP: ["RETURNED"],
   RETURNED: [], REJECTED: [], CANCELLED: [],
 };
-export type Quick = "today" | "tonight" | "weekend" | "week";
+export type Quick = "today" | "weekend" | "week";
 
 export class DomainError extends Error {
   constructor(public code: string, message: string, public status = 400) {
@@ -46,6 +47,7 @@ function minutes(value: string) {
   return hours * 60 + mins;
 }
 const localMinutes = (value: DateTime) => value.hour * 60 + value.minute;
+const isWeekday = (date: DateTime) => date.weekday <= 5;
 
 export function validateWindow(interval: Interval, settings: Settings, now = Date.now()) {
   const start = DateTime.fromISO(interval.pickup, { zone });
@@ -58,47 +60,47 @@ export function validateWindow(interval: Interval, settings: Settings, now = Dat
   if (length < settings.minHours || length > 24 * settings.maxDays) {
     throw new DomainError("duration", `Choose a rental from ${settings.minHours} hours to ${settings.maxDays} days.`);
   }
-  const inside = (time: DateTime) => localMinutes(time) >= minutes(settings.open) && localMinutes(time) <= minutes(settings.close);
+  const { open, close } = handoverHours;
+  const inside = (time: DateTime) => isWeekday(time) && localMinutes(time) >= minutes(open) && localMinutes(time) <= minutes(close);
   if (!inside(start) || !inside(end)) {
-    throw new DomainError("hours", `Pickup and return must be between ${settings.open} and ${settings.close} local time.`);
+    throw new DomainError("hours", `Pickup and return are available Monday–Friday, ${open}–${close} local time.`);
   }
   return interval;
 }
 
-export function quickInterval(type: Quick, settings: Pick<Settings, "open" | "close" | "minNotice" | "minHours" | "maxDays">, now = DateTime.now()): Interval {
+export function quickInterval(type: Quick, { minNotice, minHours, maxDays }: Pick<Settings, "minNotice" | "minHours" | "maxDays">, now: DateTime = DateTime.now()): Interval {
   const current = now.setZone(zone);
-  const at = (date: DateTime, time: string) => date.startOf("day").plus({ minutes: minutes(time) });
+  const { open, close } = handoverHours;
+  const at = (date: DateTime, time: string) => date.set({ hour: Math.floor(minutes(time) / 60), minute: minutes(time) % 60, second: 0, millisecond: 0 });
   const advance = (date: DateTime) => {
-    const open = at(date, settings.open);
-    const close = at(date, settings.close);
-    if (date < open) return open;
-    if (date > close) return at(date.plus({ days: 1 }), settings.open);
-    return date;
+    if (isWeekday(date) && date <= at(date, close)) return date < at(date, open) ? at(date, open) : date;
+    const next = isWeekday(date) ? date.plus({ days: 1 }) : date;
+    return at(isWeekday(next) ? next : next.plus({ days: 8 - next.weekday }), open);
   };
-  const earliest = current.plus({ minutes: settings.minNotice + 1 }).startOf("hour").plus({ hours: 1 });
-  let pickup = advance(earliest);
-  if (type === "tonight") {
-    const evening = at(pickup, minutes(settings.close) >= 18 * 60 && minutes(settings.open) <= 18 * 60 ? "18:00" : settings.close);
-    if (evening > pickup) pickup = evening;
-  }
+  const earliest = advance(current.plus({ minutes: minNotice }).startOf("minute").plus({ minutes: 1 }));
+  let pickup = earliest;
   if (type === "weekend") {
-    const saturday = current.startOf("day").plus({ days: (6 - current.weekday + 7) % 7 });
-    const preferred = advance(at(saturday, "10:00"));
-    if (preferred >= earliest) pickup = preferred;
-    else if (current.weekday >= 6 && pickup.weekday < 6) pickup = advance(at(saturday.plus({ days: 7 }), "10:00"));
+    const friday = earliest.plus({ days: (5 - earliest.weekday + 7) % 7 });
+    pickup = friday.hasSame(earliest, "day") && earliest > at(friday, "10:00") ? earliest : at(friday, "10:00");
   }
-  let returnAt = pickup.plus({ days: type === "week" ? Math.min(7, settings.maxDays) : Math.min(type === "weekend" ? 2 : 1, settings.maxDays) });
-  if ((+returnAt - +pickup) / hour > settings.maxDays * 24) returnAt = pickup.plus({ days: Math.max(settings.maxDays - 1, 0) });
-  if ((+returnAt - +pickup) / hour < settings.minHours) returnAt = advance(pickup.plus({ hours: settings.minHours }));
+  const days = Math.min(maxDays, type === "week" ? 7 : type === "weekend" ? 3 : 1);
+  const earliestReturn = (start: DateTime) => advance(start.plus({ hours: minHours }));
+  if (earliestReturn(pickup) > pickup.plus({ hours: maxDays * 24 })) pickup = earliest;
+  for (let remaining = 5; remaining > 0 && earliestReturn(pickup) > pickup.plus({ hours: maxDays * 24 }); remaining--) {
+    pickup = advance(at(pickup.plus({ days: 1 }), open));
+  }
+  const preferred = advance(pickup.plus({ days }));
+  const minimum = earliestReturn(pickup);
+  const returnAt = preferred >= minimum && preferred <= pickup.plus({ hours: maxDays * 24 }) ? preferred : minimum;
   return { pickup: inputDate(pickup), returnAt: inputDate(returnAt) };
 }
 
-export function quote(vehicle: Pick<Vehicle, "dailyRate" | "deposit">, interval: Interval, fee = 0): Quote {
+export function quote(vehicle: Pick<Vehicle, "dailyRate">, interval: Interval, fee = 0): Quote {
   const duration = (Date.parse(interval.returnAt) - Date.parse(interval.pickup)) / hour;
   if (!Number.isFinite(duration) || duration <= 0) throw new DomainError("dates", "Choose a valid rental interval.");
   const days = Math.max(1, Math.ceil(duration / 24));
   const subtotal = days * vehicle.dailyRate;
-  return { dailyRate: vehicle.dailyRate, days, hours: duration, subtotal, fee, total: subtotal + fee, deposit: vehicle.deposit, currency: "EUR" };
+  return { dailyRate: vehicle.dailyRate, days, hours: duration, subtotal, fee, total: subtotal + fee, currency: "EUR" };
 }
 
 export function overlaps(a: Interval, b: Interval, aBuffer = 0, bBuffer = 0) {

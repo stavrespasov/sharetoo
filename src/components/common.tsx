@@ -58,7 +58,6 @@ export function QuoteCard({ quote, lang }: { quote: Quote; lang: Lang }) {
     <div className="spread"><span>{quote.days} × {formatMoney(quote.dailyRate, lang)} {l(lang,"daily rate","dnevna cena")}</span><b>{formatMoney(quote.subtotal, lang)}</b></div>
     {quote.fee > 0 && <div className="spread"><span>{l(lang,"Fee","Pristojbina")}</span><b>{formatMoney(quote.fee, lang)}</b></div>}
     <div className="spread quote-total"><b>{l(lang,"Rental total","Skupni najem")}</b><strong>{formatMoney(quote.total, lang)}</strong></div>
-    <div className="spread"><span>{l(lang,"Refundable deposit","Vračljiva varščina")}</span><b>{formatMoney(quote.deposit, lang)}</b></div>
   </div>;
 }
 export const intervalQuery = (range?: { pickup: string; returnAt: string }) => range ? "?" + new URLSearchParams({ pickup: range.pickup, return: range.returnAt }) : "";

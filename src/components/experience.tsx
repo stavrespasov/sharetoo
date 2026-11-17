@@ -3,7 +3,7 @@
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { demoKey, mutate, type Command, type Receipt } from "@/lib/demo/actions";
-import { seedStore, updateDefaultPickup } from "@/lib/demo/seed";
+import { seedStore, updateDemoDefaults } from "@/lib/demo/seed";
 import type { Store } from "@/lib/booking/types";
 import PublicExperience from "./public";
 import AdminExperience from "./admin";
@@ -12,7 +12,7 @@ import { l, Notice, type Lang } from "./common";
 type Workspace = { state: Store; owner: boolean; receipt?: Receipt };
 function localState() {
   const saved = localStorage.getItem(demoKey);
-  if (saved) try { return updateDefaultPickup(JSON.parse(saved) as Store); } catch { /* use a fresh demo */ }
+  if (saved) try { return updateDemoDefaults(JSON.parse(saved) as Store); } catch { /* use a fresh demo */ }
   const state = seedStore();
   localStorage.setItem(demoKey, JSON.stringify(state));
   return state;

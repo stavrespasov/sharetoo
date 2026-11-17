@@ -13,10 +13,11 @@ const cookie = login.headers.get("set-cookie")?.split(";")[0];
 assert.ok(cookie);
 const unauthorized = await send({type:"reset"});
 assert.equal(unauthorized.status,401);
-const today=DateTime.now().setZone("Europe/Ljubljana").startOf("day");
-const local=(days,hour)=>today.plus({days}).set({hour}).toFormat("yyyy-MM-dd'T'HH:mm");
+const twoWeeks=DateTime.now().setZone("Europe/Ljubljana").startOf("day").plus({weeks:2});
+const monday=twoWeeks.plus({days:(8-twoWeeks.weekday)%7});
+const local=(days,hour)=>monday.plus({days}).set({hour}).toFormat("yyyy-MM-dd'T'HH:mm");
 const names=["Shared Sample Alpha","Shared Sample Beta"];
-const requests=names.map((name,i)=>({type:"request",id:crypto.randomUUID(),vehicleId:"golf",pickup:local(16,10),returnAt:local(17,10),name,email:"sharetoo-test-"+i+"@example.com",phone:"+386 01 234 56 78",note:"",accept:true,eligibility:true}));
+const requests=names.map((name,i)=>({type:"request",id:crypto.randomUUID(),vehicleId:"golf",pickup:local(0,10),returnAt:local(1,10),name,email:"sharetoo-test-"+i+"@example.com",phone:"+386 01 234 56 78",note:"",accept:true,eligibility:true}));
 const submissions=await Promise.all(requests.map(async (request)=>{
   const response=await send(request);
   assert.equal(response.status,200);

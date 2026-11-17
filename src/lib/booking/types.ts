@@ -26,7 +26,6 @@ export interface Vehicle {
   features: string[];
   rules: string[];
   dailyRate: number;
-  deposit: number;
   minAge: number;
   minLicenseYears: number;
   photo: string;
@@ -70,7 +69,6 @@ export interface Quote {
   subtotal: number;
   fee: number;
   total: number;
-  deposit: number;
   currency: "EUR";
 }
 export interface Customer {

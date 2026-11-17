@@ -13,9 +13,11 @@ npm run dev
 
 Open the displayed address. No environment variables are needed for browser demo mode. Use **Owner dashboard → Enter owner demo** to open the simulated owner workspace. The browser stores its workspace locally. Changes persist across reloads and are shared across tabs in the same browser profile. Access to this mode is simulated. Use fictitious contact details.
 
+Pickup and return are available Monday–Friday from 08:00 to 16:00 (Koper local time). Rentals can span weekends. No deposit is required.
+
 ## Walkthrough
 
-1. In the owner dashboard, choose **Describe a car**. Type or dictate “Add a black VW T-Cross 2023, automatic, €45 per day, €200 deposit, available Friday through Monday.”
+1. In the owner dashboard, choose **Describe a car**. Type or dictate “Add a black VW T-Cross 2023, automatic, €45 per day, available Friday through Monday.”
 2. Build the draft. Review suggested specifications, confirm or edit them, and check the exact bookable interval. Choose a photo and publish the vehicle.
 3. In the storefront, search for an eligible pickup and return interval. Open the vehicle, review the quote and submit a request with an example.com email.
 4. In **Bookings**, find the request and confirm it. Check the simulation timeline and repeat the storefront search to see the car removed from overlapping results.

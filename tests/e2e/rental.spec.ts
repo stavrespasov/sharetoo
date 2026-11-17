@@ -1,8 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { DateTime } from "luxon";
 
-const at = (days:number,hour:number) => DateTime.now().setZone("Europe/Ljubljana").startOf("day").plus({days}).set({hour}).toFormat("yyyy-MM-dd'T'HH:mm");
-const bookingQuery = () => new URLSearchParams({pickup:at(12,10),return:at(13,10)}).toString();
+const twoWeeks = DateTime.now().setZone("Europe/Ljubljana").startOf("day").plus({ weeks: 2 });
+const monday = twoWeeks.plus({ days: (8 - twoWeeks.weekday) % 7 });
+const at = (days:number,hour:number) => monday.plus({days}).set({hour}).toFormat("yyyy-MM-dd'T'HH:mm");
+const bookingQuery = () => new URLSearchParams({pickup:at(0,10),return:at(1,10)}).toString();
 async function openOwner(page:Page) {
   await page.addInitScript(() => { if (!localStorage.getItem("sharetoo-lang")) localStorage.setItem("sharetoo-lang", "en"); });
   await page.goto("/admin");
@@ -12,7 +14,7 @@ async function openOwner(page:Page) {
 test("owner publishes, customer requests, owner approves and records handover",async ({page})=>{
   await openOwner(page);
   await page.getByRole("link",{name:"Describe a car"}).click();
-  await page.getByLabel("Describe it in your own words").fill("Add a black VW T-Cross 2023, automatic, €45 per day, €200 deposit");
+  await page.getByLabel("Describe it in your own words").fill("Add a black VW T-Cross 2023, automatic, €45 per day");
   await page.getByRole("button",{name:"Build draft"}).click();
   await expect(page.getByLabel("Model year")).toHaveValue("2023");
   await expect(page.getByLabel("Color",{exact:true})).toHaveValue("Black");
@@ -123,8 +125,8 @@ test("Slovenian mobile search displays the car and keeps date controls inside th
     }
   }
 
-  const [pickupDate] = at(12,10).split("T");
-  const [returnDate] = at(13,10).split("T");
+  const [pickupDate] = at(0,10).split("T");
+  const [returnDate] = at(1,10).split("T");
   await pickup.getByLabel("Prevzem · Datum").fill(pickupDate);
   await pickup.getByLabel("Prevzem · Ura").fill("10:30");
   await returnTime.getByLabel("Vračilo · Datum").fill(returnDate);

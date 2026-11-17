@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { conflict, DomainError, formatDate, overlaps, quote, toInterval, transitions, validateWindow } from "../booking/domain";
+import { conflict, DomainError, formatDate, handoverHours, overlaps, quote, toInterval, transitions, validateWindow } from "../booking/domain";
 import { blockReasons, categories, fuels, statuses, transmissions, vehicleName, type Booking, type Interval, type Store, type Vehicle } from "../booking/types";
 import { seedStore } from "./seed";
 
@@ -12,19 +12,18 @@ const times = { pickup: short, returnAt: short };
 const photo = z.string().max(4_300_000).refine((value) => !value || /^\/api\/media\?id=[a-f0-9-]{36}$/.test(value) || /^\/demo\/[\w-]+\.webp$/.test(value) || /^data:image\/(?:webp|png|jpeg);base64,[a-zA-Z0-9+/=]+$/.test(value) || /^https:\/\/(?:upload|thumb)\.wikimedia\.org\//.test(value), "Choose an uploaded or catalog image.");
 const credit = z.object({ title: short, author: short, license: short, url: z.url().refine((value) => value.startsWith("https://commons.wikimedia.org/")) });
 const photoFields = { photo, photoSource: z.enum(["illustrative", "owner"]), photoCredit: credit.optional() };
-const clock = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/);
 const car = z.object({
   id, slug: id, make: short.min(1), model: short.min(1), trim: short, color: short, year: z.number().int().min(1900).max(2100),
   category: z.enum(categories), plate: short, transmission: z.enum(transmissions), fuel: z.enum(fuels), seats: count(20), doors: count(12), luggage: count(20),
   description: text, descriptionSl: text, features: z.array(short).max(35), rules: z.array(short).max(35),
-  dailyRate: money, deposit: money, minAge: count(99), minLicenseYears: count(50), ...photoFields, gallery: z.array(z.object(photoFields)).max(4).optional(),
+  dailyRate: money, minAge: count(99), minLicenseYears: count(50), ...photoFields, gallery: z.array(z.object(photoFields)).max(4).optional(),
   published: z.boolean(), active: z.boolean(), archived: z.boolean().optional(),
 });
 const ownerSettings = z.object({
-  tradingName: short.min(1), legalName: short.min(1), address: short.min(1), email: z.email(), phone: short, open: clock, close: clock,
+  tradingName: short.min(1), legalName: short.min(1), address: short.min(1), email: z.email(), phone: short,
   minNotice: count(10080), buffer: count(1440), minHours: z.number().min(1).max(336), maxDays: z.number().int().min(1).max(365), fee: money,
   policy: text, policySl: text, templateVersion: short.min(1),
-}).refine((value) => value.open < value.close && value.minHours <= value.maxDays * 24, "Review office hours and rental length.");
+}).refine((value) => value.minHours <= value.maxDays * 24, "Review the rental length.");
 
 export const command = z.discriminatedUnion("type", [
   z.object({ type: z.literal("request"), id, vehicleId: id, ...times, name: short.min(2), email: z.email().max(200), phone: short.regex(/^[+\d ()-]{6,30}$/), note: text, accept: z.literal(true), eligibility: z.literal(true), trap: z.string().max(100).optional() }),
@@ -66,7 +65,7 @@ export function unavailable(vehicle: Vehicle, state: Store, range: Interval, ign
 export function publicStore(state: Store): Store {
   return { ...state, vehicles: state.vehicles.filter(isListed).map((v) => ({ ...v, plate: "" })), bookings: state.bookings.filter((b) => ["CONFIRMED", "PICKED_UP", "RETURNED"].includes(b.status)).map((b) => ({
     id: "", ref: "", pickup: b.pickup, returnAt: b.returnAt, status: b.status, vehicleId: b.vehicleId, buffer: b.buffer, vehicleName: "",
-    customer: { name: "", email: "", phone: "" }, quote: { dailyRate: 0, days: 0, hours: 0, subtotal: 0, fee: 0, deposit: 0, total: 0, currency: "EUR" },
+    customer: { name: "", email: "", phone: "" }, quote: { dailyRate: 0, days: 0, hours: 0, subtotal: 0, fee: 0, total: 0, currency: "EUR" },
     note: "", internalNote: "", createdAt: "", acceptedAt: "", activity: [],
   })), blocks: state.blocks.map((b) => ({ ...b, note: "" })), settings: { ...state.settings, legalName: "" } };
 }
@@ -163,6 +162,6 @@ export function mutate(previous: Store, incoming: unknown): { state: Store; rece
     if (action.collection === "offers") state.offers = state.offers.filter((item) => item.id !== action.id);
     if (action.collection === "windows") state.windows = state.windows.filter((item) => item.id !== action.id);
   }
-  if (action.type === "settings") state.settings = action.settings;
+  if (action.type === "settings") state.settings = { ...action.settings, ...handoverHours };
   return { state: action.type === "reset" ? seedStore() : state };
 }

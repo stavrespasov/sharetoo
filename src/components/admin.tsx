@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Activity, ArrowDownLeft, ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, CarFront, ClipboardList, Clock3, KeyRound, LayoutGrid, LogOut, Menu, Plus, Printer, Settings2, Tag, UsersRound, X } from "lucide-react";
 import { DateTime } from "luxon";
 import { useState, type FormEvent } from "react";
-import { formatDate, formatMoney, overlaps, zone } from "@/lib/booking/domain";
+import { formatDate, formatMoney, handoverHours, overlaps, zone } from "@/lib/booking/domain";
 import { statuses, vehicleName, type Booking, type Status, type Store } from "@/lib/booking/types";
 import { isListed, unavailable } from "@/lib/demo/actions";
 import { Brand, Field, l, Notice, QuoteCard, txStatus, type Lang, type Perform } from "./common";
@@ -87,7 +87,7 @@ function Contract({booking,lang}:{booking:Booking;lang:Lang}) {
   const contract=booking.contract;
   if(!contract)return <Notice error>The draft agreement becomes available after approval.</Notice>;
   return <><div className="print-actions spread"><Link href={"/admin/bookings/"+booking.id} className="btn secondary"><ArrowLeft size={16}/> Back to booking</Link><button onClick={()=>window.print()} className="btn primary"><Printer size={16}/> Print / save PDF</button></div><article className="agreement panel"><div className="spread"><b>{contract.tradingName}</b><span className="pill">DRAFT — NOT SIGNED</span></div><h1>Rental agreement draft</h1><p>Reference {booking.ref} · Template {contract.version}</p>
-  <dl>{[["Sample operator",contract.legalName],["Pickup / return location",contract.address],["Operator contact",[contract.email,contract.phone].filter(Boolean).join(" · ")],["Renter",booking.customer.name],["Renter contact",booking.customer.email+" · "+booking.customer.phone],["Vehicle / plate",contract.car+" · "+(contract.plate||"To be completed")],["Pickup",formatDate(booking.pickup,lang)],["Return",formatDate(booking.returnAt,lang)],["Rental total",formatMoney(booking.quote.total,lang)],["Refundable deposit",formatMoney(booking.quote.deposit,lang)]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+  <dl>{[["Sample operator",contract.legalName],["Pickup / return location",contract.address],["Operator contact",[contract.email,contract.phone].filter(Boolean).join(" · ")],["Renter",booking.customer.name],["Renter contact",booking.customer.email+" · "+booking.customer.phone],["Vehicle / plate",contract.car+" · "+(contract.plate||"To be completed")],["Pickup",formatDate(booking.pickup,lang)],["Return",formatDate(booking.returnAt,lang)],["Rental total",formatMoney(booking.quote.total,lang)]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
   <p>Sample agreement text. The operator would supply the approved rental terms and complete any required fields at pickup.</p><div className="signature"><span>Operator signature</span><span>Renter signature</span></div></article></>;
 }
 function Calendar({state,lang,run,perform}:FleetProps){
@@ -114,10 +114,10 @@ function Customers({state}:Pick<Props,"state">){
 function Settings({state,run,hosted}:{state:Store;run:Run;hosted:boolean}){
   const [prefs,setPrefs]=useState(state.settings);
   const [busy,setBusy]=useState(false);
-  const words=[["tradingName","Trading name"],["legalName","Legal name"],["address","Pickup location"],["email","Contact email"],["phone","Contact phone"],["open","Opens"],["close","Closes"],["templateVersion","Agreement template version"]] as const;
+  const words=[["tradingName","Trading name"],["legalName","Legal name"],["address","Pickup location"],["email","Contact email"],["phone","Contact phone"],["templateVersion","Agreement template version"]] as const;
   const numbers=[["minNotice","Minimum notice (min)"],["buffer","Turnaround (min)"],["minHours","Minimum rental (hours)"],["maxDays","Maximum rental (days)"],["fee","Rental fee (€)"]] as const;
-  return <div className="form-stack"><form className="panel form-stack" onSubmit={async(e)=>{e.preventDefault();setBusy(true);await run({type:"settings",settings:prefs},"Settings saved.");setBusy(false);}}><h3>Business and rental rules</h3><div className="fields-two">
-    {words.map(([key,label])=><Field key={key} label={label}><input type={key==="email"?"email":key==="open"||key==="close"?"time":"text"} value={prefs[key]} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value})}/></Field>)}
+  return <div className="form-stack"><form className="panel form-stack" onSubmit={async(e)=>{e.preventDefault();setBusy(true);await run({type:"settings",settings:prefs},"Settings saved.");setBusy(false);}}><h3>Business and rental rules</h3><p className="muted">Pickup and return · Monday–Friday, {handoverHours.open}–{handoverHours.close}</p><div className="fields-two">
+    {words.map(([key,label])=><Field key={key} label={label}><input type={key==="email"?"email":"text"} value={prefs[key]} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value})}/></Field>)}
     {numbers.map(([key,label])=><Field key={key} label={label}><input type="number" min="0" step={key==="fee"?".01":"1"} value={prefs[key]/(key==="fee"?100:1)} onChange={(e)=>setPrefs({...prefs,[key]:Math.round(+e.target.value*(key==="fee"?100:1))})}/></Field>)}</div>
     <Field label="Policies · English"><textarea value={prefs.policy} onChange={(e)=>setPrefs({...prefs,policy:e.target.value})}/></Field><Field label="Policies · Slovenian"><textarea value={prefs.policySl} onChange={(e)=>setPrefs({...prefs,policySl:e.target.value})}/></Field><button className="btn primary" disabled={busy}>Save settings</button></form>
     <section className="panel form-stack"><h3>Demo workspace</h3><p className="muted">{hosted?"Shared demonstration data.":"Data is stored in this browser. Owner access in this mode is simulated."}</p><button className="btn secondary" onClick={async()=>{if(window.confirm("Replace this demo workspace with its original sample data?")&&await run({type:"reset"},"Demo reset."))location.reload();}}>Reset sample data</button>

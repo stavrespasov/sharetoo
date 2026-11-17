@@ -19,7 +19,6 @@ const weekdays = [
 ];
 const euros = "(?:€\\s*)?(\\d+(?:[.,]\\d{1,2})?)\\s*(?:€|(?:eur(?:os?|ov)?|evr(?:o|ov|a)?))?";
 const daily = new RegExp(euros + "\\s*(?:per day|a day|/\\s*day|na dan|dnevno)", "i");
-const deposit = new RegExp(euros + "\\s*(?:deposit|varščin[aeio])|(?:deposit|varščin[aeio])\\s*" + euros, "i");
 const toCents = (value?: string) => value ? Math.round(Number(value.replace(",", ".")) * 100) : undefined;
 const wordDay = (value: string) => weekdays.findIndex((pattern) => pattern.test(value)) + 1;
 
@@ -38,8 +37,8 @@ export function commandDates(source: string, settings: Settings, now: DateTime =
     start = today.plus({days: (a - today.weekday + 7) % 7});
     end = start.plus({days: (b - a + 7) % 7});
   } else if (/weekend|vikend/i.test(source)) {
-    start = today.weekday >= 6 ? today : today.plus({days: 6 - today.weekday});
-    end = start.plus({days: start.weekday === 7 ? 0 : 1});
+    start = today.plus({days: (5 - today.weekday + 7) % 7});
+    end = start.plus({days: 3});
   } else if (/this week|ta teden/i.test(source)) {
     end = today.plus({days: 7 - today.weekday});
   } else if (/tomorrow|jutri/i.test(source)) {
@@ -58,12 +57,11 @@ export function parseVehicleDescription(source: string, settings: Settings, now?
   const make = example?.make ?? (makeModel?.[1].toLowerCase() === "vw" ? "Volkswagen" : makeModel?.[1]);
   const model = example?.model ?? makeModel?.[2].replace(/\s+(?:19|20)\d{2}$/, "");
   const dayRate = source.match(daily)?.[1];
-  const refundable = source.match(deposit);
   const color = colors.find(([pattern]) => pattern.test(source))?.[1];
   return {
     example, make, model, color, year: Number(source.match(/\b(?:19|20)\d{2}\b/)?.[0]) || undefined,
     transmission: /automatic|avtomat|samodej/i.test(source) ? "Automatic" as const : /manual|ročn/i.test(source) ? "Manual" as const : undefined,
-    dailyRate: toCents(dayRate), deposit: toCents(refundable?.[1] ?? refundable?.[2]),
+    dailyRate: toCents(dayRate),
     range: commandDates(source,settings,now), intent: /\b(?:offer|ponud)\w*/i.test(source) ? "offer" : /\b(?:set|update|nastavi|spremeni)\b/i.test(source) ? "update" : "vehicle",
   } as const;
 }

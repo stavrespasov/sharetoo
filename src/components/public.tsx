@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, ArrowUpRight, CalendarDays, CarFront, Check, ChevronDown, Clock3, KeyRound, MapPin, Menu, Search, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { DomainError, formatDate, formatMoney, quickInterval, toInterval, validateWindow, type Quick } from "@/lib/booking/domain";
+import { DomainError, formatDate, formatMoney, handoverHours, quickInterval, toInterval, validateWindow, type Quick } from "@/lib/booking/domain";
 import { categories, vehicleName, type Interval, type Store, type Vehicle } from "@/lib/booking/types";
 import { isListed, rentalQuote, unavailable, type Receipt } from "@/lib/demo/actions";
 import { Brand, Breadcrumb, CarCard, Field, ImageCar, intervalQuery, l, Notice, QuoteCard, txStatus, txVehicle, type Lang, type Perform } from "./common";
@@ -13,24 +13,27 @@ import { RentalTime } from "./rental-time";
 
 type Props = { state: Store; brand: string; lang: Lang; language: (lang: Lang) => void; path: string[]; perform: Perform; receipt?: Receipt };
 type LocalRange = Interval;
-const quickChoices: [Quick, string, string][] = [["today","Today","Danes"],["tonight","Tonight","Nocoj"],["weekend","Weekend","Vikend"],["week","7 days","7 dni"]];
+const quickChoices: [Quick, string, string][] = [["today","Next available","Prvi prosti termin"],["weekend","Weekend","Vikend"],["week","7 days","7 dni"]];
 const faq = [
   ["When is my booking confirmed?", "Your request stays pending until the rental owner approves it.", "Kdaj je moja rezervacija potrjena?", "Povpraševanje ostane v obravnavi, dokler ga skrbnik ne potrdi."],
   ["What do I bring to pickup?", "Bring your original driving licence and identity document. Check the minimum age and licence requirements on your vehicle page.", "Kaj potrebujem ob prevzemu?", "Prinesite izvirnik vozniškega dovoljenja in osebnega dokumenta. Pogoje preverite na strani vozila."],
-  ["How is the price calculated?", "Rental time is rounded up to the next 24-hour day. A refundable deposit is displayed separately.", "Kako se izračuna cena?", "Trajanje najema zaokrožimo navzgor na naslednjih 24 ur. Vračljiva varščina je prikazana posebej."],
+  ["How is the price calculated?", "Rental time is rounded up to the next 24-hour day. No deposit is required.", "Kako se izračuna cena?", "Trajanje najema zaokrožimo navzgor na naslednjih 24 ur. Varščine ni."],
 ];
 function Faq({ lang }: { lang: Lang }) {
   return <div className="faq-list">{faq.map(([en, a, sl, b]) => <details key={en}><summary>{l(lang,en,sl)}<ChevronDown size={20} /></summary><p>{l(lang,a,b)}</p></details>)}</div>;
 }
+function pickupHours(lang: Lang) {
+  return l(lang, "Monday–Friday", "Ponedeljek–petek") + `, ${handoverHours.open}–${handoverHours.close}`;
+}
 function rentalMessage(error: unknown, state: Store, lang: Lang) {
   const fallback = error instanceof Error ? error.message : "Unable to process request.";
   if (lang === "en") return fallback;
-  const { minNotice, minHours, maxDays, open, close } = state.settings;
+  const { minNotice, minHours, maxDays } = state.settings;
   const messages: Record<string, string> = {
     dates: "Preverite datum in uro. Vračilo mora biti po prevzemu.",
     notice: `Izberite prevzem vsaj ${minNotice} minut vnaprej.`,
     duration: `Najem je mogoč za najmanj ${minHours} ur in največ ${maxDays} dni.`,
-    hours: `Prevzem in vračilo sta mogoča med ${open} in ${close} po lokalnem času.`,
+    hours: `Prevzem in vračilo sta mogoča od ponedeljka do petka med ${handoverHours.open} in ${handoverHours.close}.`,
     availability: "Vozilo za izbrani termin ni več na voljo.",
   };
   return (error instanceof DomainError && messages[error.code]) || "Povpraševanja ni bilo mogoče obdelati. Preverite podatke in poskusite znova.";
@@ -52,6 +55,7 @@ function SearchBar({ state, lang, initial, onSearch }: { state: Store; lang: Lan
       <RentalTime label={l(lang,"Return","Vračilo")} value={range.returnAt} onChange={(value) => change("returnAt",value)} lang={lang} />
       <button className="btn primary search-cta"><Search size={18} />{l(lang,"Find a car","Poišči vozilo")}</button>
     </div>
+    <small className="muted">{l(lang,"Pickup and return","Prevzem in vračilo")} · {pickupHours(lang)}</small>
     {error && <Notice error>{error}</Notice>}
   </form>;
 }
@@ -196,7 +200,7 @@ function Detail({ vehicle, state, lang, selected }: Pick<Props,"state"|"lang"> &
         {shownPhoto.photoCredit && <p className="credit">{l(lang,"Photo by","Avtor fotografije")} {shownPhoto.photoCredit.author} · <a href={shownPhoto.photoCredit.url} target="_blank" rel="noreferrer">{shownPhoto.photoCredit.license} ↗</a></p>}
         <p className="detail-description">{lang === "sl" ? vehicle.descriptionSl : vehicle.description}</p>
         <div className="spec-grid">{[[l(lang,"Transmission","Menjalnik"),txVehicle(vehicle.transmission,lang)],[l(lang,"Fuel","Gorivo"),txVehicle(vehicle.fuel,lang)],[l(lang,"Seats","Sedeži"),vehicle.seats],[l(lang,"Doors","Vrata"),vehicle.doors],[l(lang,"Luggage","Prtljaga"),vehicle.luggage],[l(lang,"Color","Barva"),txVehicle(vehicle.color,lang)]].filter(([,v]) => v).map(([label,value]) => <div key={label}><small>{label}</small><b>{value}</b></div>)}</div>
-        <div className="detail-info"><h3>{l(lang,"Pickup and requirements","Prevzem in pogoji")}</h3><p><MapPin size={17} /> {state.settings.address}</p><p><Clock3 size={17} />{state.settings.open}–{state.settings.close} · {l(lang,"local time","lokalni čas")}</p><p><ShieldCheck size={17} />{l(lang,"Original driving licence and ID","Izvirnik vozniškega dovoljenja in osebnega dokumenta")}{vehicle.minAge ? " · " + vehicle.minAge + "+" : ""}{vehicle.minLicenseYears ? l(lang," · Licence "," · Vozniško dovoljenje ") + vehicle.minLicenseYears + l(lang,"+ years","+ let") : ""}</p>{[...vehicle.features,...vehicle.rules].length > 0 && <p>{[...vehicle.features,...vehicle.rules].map((item) => txVehicle(item,lang)).join(" · ")}</p>}</div>
+        <div className="detail-info"><h3>{l(lang,"Pickup and requirements","Prevzem in pogoji")}</h3><p><MapPin size={17} /> {state.settings.address}</p><p><Clock3 size={17} />{pickupHours(lang)}</p><p><ShieldCheck size={17} />{l(lang,"Original driving licence and ID","Izvirnik vozniškega dovoljenja in osebnega dokumenta")}{vehicle.minAge ? " · " + vehicle.minAge + "+" : ""}{vehicle.minLicenseYears ? l(lang," · Licence "," · Vozniško dovoljenje ") + vehicle.minLicenseYears + l(lang,"+ years","+ let") : ""}</p>{[...vehicle.features,...vehicle.rules].length > 0 && <p>{[...vehicle.features,...vehicle.rules].map((item) => txVehicle(item,lang)).join(" · ")}</p>}</div>
         <div className="detail-info"><h3>{l(lang,"Upcoming unavailable dates","Prihajajoči zasedeni termini")}</h3>{occupied.length ? occupied.slice(0,6).map((item) => <p key={item.pickup+item.returnAt}>{formatDate(item.pickup,lang)} – {formatDate(item.returnAt,lang)}</p>) : <p>{l(lang,"Choose your dates to check availability.","Izberite datume za preverjanje razpoložljivosti.")}</p>}{state.windows.filter((item) => item.vehicleId === vehicle.id).map((item) => <p key={item.id}>{l(lang,"Bookable window","Obdobje najema")} · {formatDate(item.pickup,lang)} – {formatDate(item.returnAt,lang)}</p>)}</div>
       </div>
       <aside className="booking-panel"><h3>{l(lang,"Plan your rental","Načrtujte najem")}</h3><TripFields local={local} set={set} lang={lang} />{price && <QuoteCard quote={price} lang={lang} />}
@@ -255,11 +259,11 @@ function Info({ name,state, lang }: {name: string;state: Store;lang:Lang}) {
   const copy: Record<string,[string,string,string,string]> = {
     faq:["Frequently asked questions","Pogosta vprašanja","",""],
     contact:["Get in touch","Kontakt","Demo pickup details","Predstavitveni podatki za prevzem"],
-    terms:["Demo terms","Pogoji predstavitve","Booking requests await owner approval. Prices, deposit and documents are shown for demonstration. Review the vehicle requirements before submitting a request.","Povpraševanja čakajo na potrditev skrbnika. Cene, varščina in dokumenti so prikazani za predstavitev."],
+    terms:["Demo terms","Pogoji predstavitve","Booking requests await owner approval. Prices and documents are shown for demonstration. Review the vehicle requirements before submitting a request.","Povpraševanja čakajo na potrditev skrbnika. Cene in dokumenti so prikazani za predstavitev."],
     privacy:["Privacy","Zasebnost","Use fictitious details in this demonstration. The request form stores the contact details you enter so the owner view can display the booking. This demo does not collect identity document uploads.","V predstavitvi uporabite izmišljene podatke. Obrazec shrani vnesene kontaktne podatke za prikaz rezervacije v skrbniškem pogledu."],
   };
   const [heading,title,body,translation] = copy[name] ?? copy.faq;
-  return <main className="shell section info-page"><h1>{l(lang,heading,title)}</h1>{body && <p>{l(lang,body,translation)}</p>}{name === "faq" && <Faq lang={lang} />}{name === "contact" && <div className="panel detail-info"><p><MapPin size={19} />{state.settings.address}</p><p><Clock3 size={19} />{state.settings.open}–{state.settings.close}</p><p>{state.settings.email}</p></div>}</main>;
+  return <main className="shell section info-page"><h1>{l(lang,heading,title)}</h1>{body && <p>{l(lang,body,translation)}</p>}{name === "faq" && <Faq lang={lang} />}{name === "contact" && <div className="panel detail-info"><p><MapPin size={19} />{state.settings.address}</p><p><Clock3 size={19} />{pickupHours(lang)}</p><p>{state.settings.email}</p></div>}</main>;
 }
 export default function PublicExperience(props: Props) {
   const { state,brand,lang,language,path,perform,receipt } = props;

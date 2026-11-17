@@ -20,7 +20,7 @@ const photoCredit = (value: unknown) => value as NonNullable<Vehicle["photoCredi
 
 function freshVehicle(): Vehicle {
   const id = crypto.randomUUID();
-  return { id,slug:id,make:"",model:"",year:new Date().getFullYear(),category:"Crossover",color:"",trim:"",plate:"",transmission:"Automatic",fuel:"Petrol",seats:0,doors:0,luggage:0,description:"",descriptionSl:"",features:[],rules:[],dailyRate:0,deposit:0,minAge:0,minLicenseYears:0,photo:"",photoSource:"illustrative",published:false,active:true };
+  return { id,slug:id,make:"",model:"",year:new Date().getFullYear(),category:"Crossover",color:"",trim:"",plate:"",transmission:"Automatic",fuel:"Petrol",seats:0,doors:0,luggage:0,description:"",descriptionSl:"",features:[],rules:[],dailyRate:0,minAge:0,minLicenseYears:0,photo:"",photoSource:"illustrative",published:false,active:true };
 }
 function descriptionFor(v: Vehicle) {
   return {
@@ -84,12 +84,12 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
     const entry:Vehicle={...v,make:result.make ?? v.make,model:result.model ?? v.model,color:result.color ?? v.color,year:result.year ?? v.year,
       transmission:result.transmission ?? result.example?.transmission ?? v.transmission,category:result.example?.category ?? v.category,
       fuel:result.example?.fuel ?? v.fuel,seats:result.example?.seats ?? v.seats, doors:result.example?.doors ?? v.doors,luggage:result.example?.luggage ?? v.luggage,
-      dailyRate:result.dailyRate ?? v.dailyRate,deposit:result.deposit ?? v.deposit,
+      dailyRate:result.dailyRate ?? v.dailyRate,
       photo:result.example ? "/demo/"+result.example.id+".webp" : v.photo,photoSource:result.example ? "illustrative" : v.photoSource,
       photoCredit:result.example ? undefined : v.photoCredit };
     if (!entry.make || !entry.model) {setNote("Enter a make and model, or fill in the form below.");return;}
     setV({...entry,...descriptionFor(entry)});setDirty(true);
-    const suggested = [!result.year && "year",!result.transmission && "transmission","fuel","seats","doors","luggage",!result.deposit && "deposit"].filter(Boolean) as string[];
+    const suggested = [!result.year && "year",!result.transmission && "transmission","fuel","seats","doors","luggage"].filter(Boolean) as string[];
     setUntouched(suggested);
     setDraft(result.range ? {kind:"window",range:result.range} : undefined);
     setNote((targets.length ? "Similar vehicle already exists. Review before creating another. " : "") + (result.range ? "Review the availability dates and suggested specifications." : "Review the suggested specifications. Set dates below if needed."));
@@ -124,10 +124,10 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
     });
     setDirty(true);
   }
-  const numberField=(key:"year"|"seats"|"doors"|"luggage"|"minAge"|"minLicenseYears"|"dailyRate"|"deposit",label:string,price=false)=><Field label={label+(untouched.includes(key)?" · review":"")}><input type="number" min={key==="year"?1900:0} step={price?".01":"1"} value={price?v[key]/100:v[key]} onChange={(e)=>set(key,Math.round(Number(e.target.value)*(price?100:1)))} /></Field>;
+  const numberField=(key:"year"|"seats"|"doors"|"luggage"|"minAge"|"minLicenseYears"|"dailyRate",label:string,price=false)=><Field label={label+(untouched.includes(key)?" · review":"")}><input type="number" min={key==="year"?1900:0} step={price?".01":"1"} value={price?v[key]/100:v[key]} onChange={(e)=>set(key,Math.round(Number(e.target.value)*(price?100:1)))} /></Field>;
   return <>
     <section className="panel quick-entry"><div className="section-mini"><Sparkles size={20} /><h3>{l(lang,"Describe a car or offer","Opišite vozilo ali ponudbo")}</h3></div>
-      <form className="form-stack" onSubmit={describe}><Field label={l(lang,"Describe it in your own words","Opišite s svojimi besedami")}><textarea rows={2} placeholder={l(lang,"Black VW T-Cross 2023, automatic, €45 per day, €200 deposit, Friday to Monday","Črn VW T-Cross 2023, samodejni menjalnik, 45 € na dan, 200 € varščine, od petka do ponedeljka")} value={source} onChange={(e)=>setSource(e.target.value)} /></Field>
+      <form className="form-stack" onSubmit={describe}><Field label={l(lang,"Describe it in your own words","Opišite s svojimi besedami")}><textarea rows={2} placeholder={l(lang,"Black VW T-Cross 2023, automatic, €45 per day, Friday to Monday","Črn VW T-Cross 2023, samodejni menjalnik, 45 € na dan, od petka do ponedeljka")} value={source} onChange={(e)=>setSource(e.target.value)} /></Field>
         <div className="spread quick-bottom"><VoiceButton lang={lang} onText={setSource} /><button className="btn primary" disabled={!source.trim()}>{l(lang,"Build draft","Pripravi osnutek")}</button></div>
       </form>{note && <Notice>{note}</Notice>}
       {draft && <div className="form-stack draft-range"><h3>{draft.kind==="offer"?"Proposed price offer":"Proposed availability window"}</h3>
@@ -153,7 +153,7 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
           <Field label="Description · English"><textarea value={v.description} onChange={(e)=>set("description",e.target.value)} /></Field><Field label="Description · Slovenian"><textarea value={v.descriptionSl} onChange={(e)=>set("descriptionSl",e.target.value)} /></Field>
           <button className="btn secondary" type="button" disabled={!v.make || !v.model} onClick={()=>{setV({...v,...descriptionFor(v)});setDirty(true);}}>Write from vehicle details</button>
         </section>
-        <section className="panel form-stack"><h3>Pricing and requirements</h3><div className="fields-two">{numberField("dailyRate","Daily rate (€)",true)}{numberField("deposit","Refundable deposit (€)",true)}{numberField("minAge","Minimum age")}{numberField("minLicenseYears","Years with licence")}</div>
+        <section className="panel form-stack"><h3>Pricing and requirements</h3><div className="fields-two">{numberField("dailyRate","Daily rate (€)",true)}{numberField("minAge","Minimum age")}{numberField("minLicenseYears","Years with licence")}</div>
           <label className="check"><input type="checkbox" checked={v.active} onChange={(e)=>set("active",e.target.checked)} /> Vehicle in service</label>
           {untouched.length > 0 && <button className="btn secondary" type="button" onClick={()=>setUntouched([])}>Confirm reviewed specifications</button>}
         </section>
