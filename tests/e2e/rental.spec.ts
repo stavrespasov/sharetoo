@@ -44,6 +44,7 @@ test("owner publishes, customer requests, owner approves and records handover",a
   await expect(page.getByText("BOOKING CONFIRMED CUSTOMER",{exact:true})).toHaveCount(1);
   await page.getByRole("link",{name:"Preview draft agreement"}).click();
   await expect(page.getByText("DRAFT — NOT SIGNED")).toBeVisible();
+  await expect(page.getByText("Koper, Slovenija",{exact:true})).toBeVisible();
   await expect(page.getByText("Jordan Example",{exact:true})).toBeVisible();
   await page.goto("/cars?"+bookingQuery());
   await expect(page.getByRole("heading",{name:"The fleet."})).toBeVisible();
@@ -83,13 +84,13 @@ test("voice draft and denial support text entry",async ({page})=>{
 });
 test("key pages fit viewport and load with English and Slovenian controls",async ({page})=>{
   await openOwner(page);
-  for(const [path,heading] of [["/","Car rental in Ljubljana."],["/cars","The fleet."],["/admin","Overview"],["/admin/vehicles","Fleet"],["/admin/bookings","Bookings"],["/admin/calendar","Calendar"],["/admin/offers","Offers"],["/admin/customers","Customers"],["/admin/settings","Settings"]]){
+  for(const [path,heading] of [["/","Car rental in Koper."],["/cars","The fleet."],["/admin","Overview"],["/admin/vehicles","Fleet"],["/admin/bookings","Bookings"],["/admin/calendar","Calendar"],["/admin/offers","Offers"],["/admin/customers","Customers"],["/admin/settings","Settings"]]){
     await page.goto(path);
     await expect(page.getByRole("heading",{name:heading,exact:true})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
   await page.goto("/");
-  await expect(page.getByRole("heading",{name:"Car rental in Ljubljana."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Car rental in Koper."})).toBeVisible();
   const menu = page.getByRole("button",{name:"Open menu"});
   if (await menu.isVisible()) await menu.click();
   await page.getByRole("button",{name:"Preklopi v slovenščino"}).click();
@@ -100,7 +101,8 @@ test("Slovenian mobile search displays the car and keeps date controls inside th
   await page.setViewportSize({width:320,height:760});
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang","sl");
-  await expect(page.getByRole("heading",{name:"Najem vozil v Ljubljani."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Najem vozil v Kopru."})).toBeVisible();
+  await expect(page.locator(".search-panel").getByText("Koper, Slovenija",{exact:true})).toBeVisible();
   const photo = page.getByRole("img",{name:"Srebrn avtomobil pred betonsko stavbo"});
   await expect(photo).toBeVisible();
   await expect.poll(() => photo.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);

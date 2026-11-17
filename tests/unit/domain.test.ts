@@ -3,14 +3,14 @@ import { DateTime } from "luxon";
 import { overlaps, quote, toInterval, validateWindow, zone } from "../../src/lib/booking/domain";
 import { mutate, publicStore, rentalQuote, unavailable } from "../../src/lib/demo/actions";
 import { commandDates, parseVehicleDescription } from "../../src/lib/demo/quick-entry";
-import { demoSettings, seedStore } from "../../src/lib/demo/seed";
+import { demoSettings, seedStore, updateDefaultPickup } from "../../src/lib/demo/seed";
 
 const future = (days: number, hour: number) => DateTime.now().setZone(zone).startOf("day").plus({ days }).set({hour}).toFormat("yyyy-MM-dd'T'HH:mm");
 const range = {pickup:future(13,10),returnAt:future(14,11)};
 const carId = "golf";
 const request = (id: string) => ({type:"request",id,vehicleId:carId,...range,name:"Ava Example",email:"ava@example.com",phone:"+386 01234567",note:"",accept:true,eligibility:true});
 
-describe("Ljubljana rental rules", () => {
+describe("Slovenian rental time rules", () => {
   it("uses elapsed time and rounds up without adding the deposit", () => {
     const interval=toInterval("2027-03-27T10:00","2027-03-28T10:00");
     expect(quote({dailyRate:4500,deposit:20000},interval,500)).toMatchObject({hours:23,days:1,total:5000,deposit:20000});
@@ -29,6 +29,16 @@ describe("Ljubljana rental rules", () => {
   });
 });
 describe("booking state", () => {
+  it("updates the old demo pickup address and preserves owner-configured addresses", () => {
+    const old = seedStore();
+    old.settings.address = "Ljubljana, Slovenia · Demo pickup point";
+    const updated = updateDefaultPickup(old);
+    expect(updated.settings.address).toBe("Koper, Slovenija");
+    expect(updated.bookings).toBe(old.bookings);
+    const custom = {...old, settings:{...old.settings, address:"Pickup at the harbour"}};
+    expect(updateDefaultPickup(custom)).toBe(custom);
+  });
+
   it("accepts competing requests, prevents double confirmation, and releases a cancellation", () => {
     let state=seedStore();
     state=mutate(state,request("customer-a")).state;

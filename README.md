@@ -1,6 +1,6 @@
 # Sharetoo Concept
 
-An interactive car-rental demo for Ljubljana. It includes an English and Slovenian storefront, date and time search, a booking-request workflow, and an owner workspace for fleet, reservations, availability, offers, customers, and business settings.
+An interactive car-rental demo for Koper. It includes an English and Slovenian storefront, date and time search, a booking-request workflow, and an owner workspace for fleet, reservations, availability, offers, customers, and business settings.
 
 ## Run locally
 

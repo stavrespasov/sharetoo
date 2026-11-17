@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { allocated, DomainError } from "../booking/domain";
 import type { Store, VehiclePhoto } from "../booking/types";
 import { command, mutate } from "./actions";
-import { seedStore } from "./seed";
+import { seedStore, updateDefaultPickup } from "./seed";
 
 let connection: ReturnType<typeof postgres> | undefined;
 function db() {
@@ -34,7 +34,7 @@ async function allocations(tx: Tx, state: Store) {
 export async function readHosted() {
   const sql = await initialize();
   const [row] = await sql<{state:Store}[]>`SELECT state FROM sharetoo_demo WHERE name = 'default'`;
-  return row.state;
+  return updateDefaultPickup(row.state);
 }
 export async function writeHosted(action: unknown) {
   const sql = await initialize();
@@ -42,7 +42,7 @@ export async function writeHosted(action: unknown) {
     return await sql.begin(async (tx) => {
       const [row] = await tx<{state:Store}[]>`SELECT state FROM sharetoo_demo WHERE name = 'default' FOR UPDATE`;
       const parsed=command.safeParse(action);
-      const result = mutate(row.state,action);
+      const result = mutate(updateDefaultPickup(row.state),action);
       if (parsed.success && parsed.data.type==="vehicle") {
         const v=result.state.vehicles.find((item)=>item.id===(parsed.data as {vehicle:{id:string}}).vehicle.id)!;
         const savedPhotos = new Set(row.state.vehicles.flatMap((item)=>[item.photo,...(item.gallery ?? []).map((entry)=>entry.photo)]));

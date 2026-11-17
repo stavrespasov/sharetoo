@@ -8,13 +8,22 @@ export const catalog = [
   { id: "golf", make: "Volkswagen", model: "Golf", year: 2021, category: "Hatchback", color: "White", transmission: "Manual", fuel: "Petrol", seats: 5, doors: 5, luggage: 2, dailyRate: 3900, deposit: 20000, description: "An easy-to-drive hatchback with room for five and a footprint that suits city streets.", descriptionSl: "Okretna kombilimuzina s prostorom za pet potnikov, primerna za mestne ulice." },
 ] as const;
 export const demoSettings: Settings = {
-  tradingName: "Sharetoo Concept", legalName: "Sharetoo Concept — fictitious sample", address: "Ljubljana, Slovenia · Demo pickup point",
+  tradingName: "Sharetoo Concept", legalName: "Sharetoo Concept — fictitious sample", address: "Koper, Slovenija",
   email: "rental@example.com", phone: "", open: "08:00", close: "20:00",
   minNotice: 30, buffer: 60, minHours: 2, maxDays: 30, fee: 0,
   policy: "Bring the original driver's licence and identity document to the sample pickup. Contact the owner about changes to a request.",
   policySl: "Ob prevzemu prinesite izvirnik vozniškega dovoljenja in osebnega dokumenta. Za spremembo povpraševanja se obrnite na skrbnika.",
   templateVersion: "demo-1",
 };
+
+export function updateDefaultPickup(state: Store): Store {
+  const previousAddress = "Ljubljana, Slovenia · Demo pickup point";
+  if (state.settings.address !== previousAddress) return state;
+  return {
+    ...state,
+    settings: { ...state.settings, address: demoSettings.address },
+  };
+}
 
 export function seedStore(now = DateTime.now()): Store {
   const today = now.setZone(zone).startOf("day");

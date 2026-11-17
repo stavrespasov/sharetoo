@@ -46,7 +46,7 @@ function SearchBar({ state, lang, initial, onSearch }: { state: Store; lang: Lan
     catch (e) { setError(rentalMessage(e,state,lang)); }
   }
   return <form className="search-panel" onSubmit={submit}>
-    <div className="search-top"><span className="location"><MapPin size={17} /> Ljubljana, Slovenija</span><div className="quick-pills" aria-label={l(lang,"Rental presets","Hitri termini")}>{quickChoices.map(([key, en, sl]) => <button type="button" className={preset === key ? "selected" : ""} aria-pressed={preset === key} key={key} onClick={() => {setPreset(key);setRange(quickInterval(key,state.settings));setError("");}}>{l(lang,en,sl)}</button>)}</div></div>
+    <div className="search-top"><span className="location"><MapPin size={17} /> Koper, Slovenija</span><div className="quick-pills" aria-label={l(lang,"Rental presets","Hitri termini")}>{quickChoices.map(([key, en, sl]) => <button type="button" className={preset === key ? "selected" : ""} aria-pressed={preset === key} key={key} onClick={() => {setPreset(key);setRange(quickInterval(key,state.settings));setError("");}}>{l(lang,en,sl)}</button>)}</div></div>
     <div className="search-controls">
       <RentalTime label={l(lang,"Pickup","Prevzem")} value={range.pickup} onChange={(value) => change("pickup",value)} lang={lang} />
       <RentalTime label={l(lang,"Return","Vračilo")} value={range.returnAt} onChange={(value) => change("returnAt",value)} lang={lang} />
@@ -97,14 +97,14 @@ function PublicHeader({ brand, lang, language }: Pick<Props,"brand"|"lang"|"lang
   </header>;
 }
 function Footer({ brand, lang }: Pick<Props,"brand"|"lang">) {
-  return <footer className="footer"><div className="shell footer-inner"><div><Brand brand={brand} /><p>{l(lang,"Car rental concept · Ljubljana, Slovenia","Koncept najema vozil · Ljubljana, Slovenija")}</p></div><nav aria-label="Footer"><Link href="/cars">{l(lang,"Fleet","Vozila")}</Link><Link href="/terms">{l(lang,"Terms","Pogoji")}</Link><Link href="/privacy">{l(lang,"Privacy","Zasebnost")}</Link><Link href="/admin">{l(lang,"Owner dashboard","Skrbniška plošča")}</Link></nav></div></footer>;
+  return <footer className="footer"><div className="shell footer-inner"><div><Brand brand={brand} /><p>{l(lang,"Car rental concept · Koper, Slovenia","Koncept najema vozil · Koper, Slovenija")}</p></div><nav aria-label="Footer"><Link href="/cars">{l(lang,"Fleet","Vozila")}</Link><Link href="/terms">{l(lang,"Terms","Pogoji")}</Link><Link href="/privacy">{l(lang,"Privacy","Zasebnost")}</Link><Link href="/admin">{l(lang,"Owner dashboard","Skrbniška plošča")}</Link></nav></div></footer>;
 }
 function Home({ state, lang }: Pick<Props,"state"|"lang">) {
   const router = useRouter();
   return <>
     <section className="shell hero">
       <div className="hero-content">
-        <h1>{l(lang,"Car rental in Ljubljana","Najem vozil v Ljubljani")}<span>.</span></h1>
+        <h1>{l(lang,"Car rental in Koper","Najem vozil v Kopru")}<span>.</span></h1>
         <p>{l(lang,"Choose when you need a car and see what’s available for your trip.","Izberite termin in preverite, katera vozila so na voljo.")}</p>
       </div>
       <div className="hero-media">
@@ -120,7 +120,7 @@ function Home({ state, lang }: Pick<Props,"state"|"lang">) {
     <section className="how section" id="how-it-works"><div className="shell"><div className="section-head"><h2>{l(lang,"How it works","Kako deluje")}</h2></div><div className="features">{[
       [CalendarDays,"Choose your dates","Izberite datume","Search by pickup and return time.","Iščite po času prevzema in vračila."],
       [Check,"Request your car","Pošljite povpraševanje","Review the price and send a booking request.","Preglejte ceno in pošljite povpraševanje."],
-      [KeyRound,"Pick up in Ljubljana","Prevzem v Ljubljani","Once approved, bring your original documents.","Po potrditvi prinesite izvirnike dokumentov."],
+      [KeyRound,"Pick up in Koper","Prevzem v Kopru","Once approved, bring your original documents.","Po potrditvi prinesite izvirnike dokumentov."],
     ].map(([Icon,en,sl,a,b]) => { const Symbol = Icon as typeof CalendarDays; return <div key={String(en)}><Symbol size={24} /><h3>{l(lang,String(en),String(sl))}</h3><p>{l(lang,String(a),String(b))}</p></div>; })}</div></div></section>
     <section className="shell section faq-section"><h2>{l(lang,"Good to know","Dobro je vedeti")}</h2><Faq lang={lang} /></section>
   </>;
@@ -196,7 +196,7 @@ function Detail({ vehicle, state, lang, selected }: Pick<Props,"state"|"lang"> &
         {shownPhoto.photoCredit && <p className="credit">{l(lang,"Photo by","Avtor fotografije")} {shownPhoto.photoCredit.author} · <a href={shownPhoto.photoCredit.url} target="_blank" rel="noreferrer">{shownPhoto.photoCredit.license} ↗</a></p>}
         <p className="detail-description">{lang === "sl" ? vehicle.descriptionSl : vehicle.description}</p>
         <div className="spec-grid">{[[l(lang,"Transmission","Menjalnik"),txVehicle(vehicle.transmission,lang)],[l(lang,"Fuel","Gorivo"),txVehicle(vehicle.fuel,lang)],[l(lang,"Seats","Sedeži"),vehicle.seats],[l(lang,"Doors","Vrata"),vehicle.doors],[l(lang,"Luggage","Prtljaga"),vehicle.luggage],[l(lang,"Color","Barva"),txVehicle(vehicle.color,lang)]].filter(([,v]) => v).map(([label,value]) => <div key={label}><small>{label}</small><b>{value}</b></div>)}</div>
-        <div className="detail-info"><h3>{l(lang,"Pickup and requirements","Prevzem in pogoji")}</h3><p><MapPin size={17} /> {state.settings.address}</p><p><Clock3 size={17} />{state.settings.open}–{state.settings.close} · Europe/Ljubljana</p><p><ShieldCheck size={17} />{l(lang,"Original driving licence and ID","Izvirnik vozniškega dovoljenja in osebnega dokumenta")}{vehicle.minAge ? " · " + vehicle.minAge + "+" : ""}{vehicle.minLicenseYears ? l(lang," · Licence "," · Vozniško dovoljenje ") + vehicle.minLicenseYears + l(lang,"+ years","+ let") : ""}</p>{[...vehicle.features,...vehicle.rules].length > 0 && <p>{[...vehicle.features,...vehicle.rules].map((item) => txVehicle(item,lang)).join(" · ")}</p>}</div>
+        <div className="detail-info"><h3>{l(lang,"Pickup and requirements","Prevzem in pogoji")}</h3><p><MapPin size={17} /> {state.settings.address}</p><p><Clock3 size={17} />{state.settings.open}–{state.settings.close} · {l(lang,"local time","lokalni čas")}</p><p><ShieldCheck size={17} />{l(lang,"Original driving licence and ID","Izvirnik vozniškega dovoljenja in osebnega dokumenta")}{vehicle.minAge ? " · " + vehicle.minAge + "+" : ""}{vehicle.minLicenseYears ? l(lang," · Licence "," · Vozniško dovoljenje ") + vehicle.minLicenseYears + l(lang,"+ years","+ let") : ""}</p>{[...vehicle.features,...vehicle.rules].length > 0 && <p>{[...vehicle.features,...vehicle.rules].map((item) => txVehicle(item,lang)).join(" · ")}</p>}</div>
         <div className="detail-info"><h3>{l(lang,"Upcoming unavailable dates","Prihajajoči zasedeni termini")}</h3>{occupied.length ? occupied.slice(0,6).map((item) => <p key={item.pickup+item.returnAt}>{formatDate(item.pickup,lang)} – {formatDate(item.returnAt,lang)}</p>) : <p>{l(lang,"Choose your dates to check availability.","Izberite datume za preverjanje razpoložljivosti.")}</p>}{state.windows.filter((item) => item.vehicleId === vehicle.id).map((item) => <p key={item.id}>{l(lang,"Bookable window","Obdobje najema")} · {formatDate(item.pickup,lang)} – {formatDate(item.returnAt,lang)}</p>)}</div>
       </div>
       <aside className="booking-panel"><h3>{l(lang,"Plan your rental","Načrtujte najem")}</h3><TripFields local={local} set={set} lang={lang} />{price && <QuoteCard quote={price} lang={lang} />}

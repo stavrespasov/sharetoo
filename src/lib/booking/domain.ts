@@ -36,7 +36,7 @@ export function toInterval(pickup: string, returnAt: string): Interval {
   const start = localDate(pickup);
   const end = localDate(returnAt);
   if (!start.isValid || !end.isValid || end <= start) {
-    throw new DomainError("dates", "Choose valid Ljubljana times and a return after pickup.");
+    throw new DomainError("dates", "Choose valid local times and a return after pickup.");
   }
   return { pickup: start.toUTC().toISO()!, returnAt: end.toUTC().toISO()! };
 }
@@ -60,7 +60,7 @@ export function validateWindow(interval: Interval, settings: Settings, now = Dat
   }
   const inside = (time: DateTime) => localMinutes(time) >= minutes(settings.open) && localMinutes(time) <= minutes(settings.close);
   if (!inside(start) || !inside(end)) {
-    throw new DomainError("hours", `Pickup and return must be between ${settings.open} and ${settings.close} Ljubljana time.`);
+    throw new DomainError("hours", `Pickup and return must be between ${settings.open} and ${settings.close} local time.`);
   }
   return interval;
 }
