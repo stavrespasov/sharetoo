@@ -9,7 +9,7 @@ const id = z.string().regex(/^[a-z0-9-]{1,80}$/i);
 const money = z.number().int().min(0).max(10_000_000);
 const count = (max: number) => z.number().int().min(0).max(max);
 const times = { pickup: short, returnAt: short };
-const photo = z.string().max(4_300_000).refine((value) => !value || /^\/api\/media\?id=[a-f0-9-]{36}$/.test(value) || /^\/demo\/[\w-]+\.webp$/.test(value) || /^data:image\/(?:webp|png|jpeg);base64,[a-zA-Z0-9+/=]+$/.test(value) || /^https:\/\/upload\.wikimedia\.org\//.test(value), "Choose an uploaded or catalog image.");
+const photo = z.string().max(4_300_000).refine((value) => !value || /^\/api\/media\?id=[a-f0-9-]{36}$/.test(value) || /^\/demo\/[\w-]+\.webp$/.test(value) || /^data:image\/(?:webp|png|jpeg);base64,[a-zA-Z0-9+/=]+$/.test(value) || /^https:\/\/(?:upload|thumb)\.wikimedia\.org\//.test(value), "Choose an uploaded or catalog image.");
 const credit = z.object({ title: short, author: short, license: short, url: z.url().refine((value) => value.startsWith("https://commons.wikimedia.org/")) });
 const photoFields = { photo, photoSource: z.enum(["illustrative", "owner"]), photoCredit: credit.optional() };
 const clock = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/);
