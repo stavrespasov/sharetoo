@@ -9,9 +9,9 @@ const models = [
   [/\b(?:vw|volkswagen)?\s*golf\b/i, catalog[2]],
 ] as const;
 const colors = [
-  [/\b(?:black|crn[ao]?)\b/i,"Black"],[/\b(?:white|bel[ao]?)\b/i,"White"],
-  [/\b(?:gray|grey|siv[ao]?)\b/i,"Gray"],[/\b(?:silver|srebrn[ao]?)\b/i,"Silver"],
-  [/\b(?:blue|moder|modr[ao])\b/i,"Blue"],[/\b(?:red|rdec[ao]?)\b/i,"Red"],
+  [/\b(?:black|crn[aio]?)\b/i,"Black"],[/\b(?:white|bel[aio]?)\b/i,"White"],
+  [/\b(?:gray|grey|siv[aio]?)\b/i,"Gray"],[/\b(?:silver|srebrn[aio]?)\b/i,"Silver"],
+  [/\b(?:blue|moder|modr[aio])\b/i,"Blue"],[/\b(?:red|rdec[aio]?)\b/i,"Red"],
 ] as const;
 const fuels = [
   [/\b(?:petrol|gasoline|bencin\w*)\b/i,"Petrol"],[/\b(?:diesel|dizel\w*)\b/i,"Diesel"],
@@ -21,7 +21,7 @@ const weekdays = [
   /\b(?:monday|ponedeljek|ponedeljka)\b/i, /\b(?:tuesday|torek|torka)\b/i, /\b(?:wednesday|sred[aeo])\b/i,
   /\b(?:thursday|cetrtek|cetrtka)\b/i, /\b(?:friday|petek|petka)\b/i, /\b(?:saturday|sobot[aeo])\b/i, /\b(?:sunday|nedelj[aeo])\b/i,
 ];
-const euros = "(?:€\\s*)?(\\d+(?:[.,]\\d{1,2})?)\\s*(?:€|(?:eur(?:os?|ov)?|evr(?:o|ov|a)?))?";
+const euros = "(?:^|[^\\d.,])(?:€\\s*)?(\\d+(?:[.,]\\d{1,2})?)(?![\\d.,])\\s*(?:€|(?:eur(?:os?|ov)?|evr(?:o|ov|a)?))?";
 const daily = new RegExp(euros + "\\s*(?:per day|a day|/\\s*day|na dan|dnevno)", "i");
 const toCents = (value?: string) => value ? Math.round(Number(value.replace(",", ".")) * 100) : undefined;
 const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "");

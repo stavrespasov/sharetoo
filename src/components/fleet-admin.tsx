@@ -117,7 +117,9 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
     setV(entry);
     setDirty(true);
     setDraft(result.range ? { kind: "window", range: result.range } : undefined);
-    const message = targets.length
+    const message = !entry.year || !entry.color || !entry.dailyRate
+      ? t("Check the transcript and complete the year, color and daily rate before publishing.", "Pred objavo preverite prepis in dopolnite letnik, barvo in dnevno ceno.")
+      : targets.length
       ? t("This model is already in your fleet. Check that this is another vehicle.", "Ta model je že med vozili. Preverite, ali dodajate drugo vozilo.")
       : t("Fields filled. Check the details, then save.", "Polja so izpolnjena. Preverite podatke in shranite.");
     setNote(message);

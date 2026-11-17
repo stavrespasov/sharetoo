@@ -106,4 +106,8 @@ describe("quick vehicle entry", () => {
   it("recognizes Slovenian pricing and relative availability", () => {
     expect(parseVehicleDescription("Dodaj bel VW Golf 2021, 35 evrov na dan, ta vikend",demoSettings,monday)).toMatchObject({model:"Golf",color:"White",dailyRate:3500,range:{pickup:"2026-11-20T08:00",returnAt:"2026-11-23T16:00"}});
   });
+  it("keeps a malformed transcribed price empty and accepts a valid decimal", () => {
+    expect(parseVehicleDescription("Beli Golf, letnik 2022. 10.1930 euro na dan.",demoSettings,monday)).toMatchObject({make:"Volkswagen",color:"White",year:2022,dailyRate:undefined});
+    expect(parseVehicleDescription("Beli Golf, letnik 2022, 39,50 evrov na dan.",demoSettings,monday).dailyRate).toBe(3950);
+  });
 });
