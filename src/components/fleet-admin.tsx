@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Camera, CarFront, ImagePlus, Plus, Search, Sparkles } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { formatDate, formatMoney, inputDate, quickInterval } from "@/lib/booking/domain";
-import { blockReasons, categories, fuels, transmissions, vehicleName, type Interval, type Store, type Vehicle } from "@/lib/booking/types";
+import { blockReasons, categories, fuels, transmissions, vehicleName, type Interval, type Store, type Vehicle, type VehiclePhoto } from "@/lib/booking/types";
 import { isListed, type Command } from "@/lib/demo/actions";
 import { parseVehicleDescription } from "@/lib/demo/quick-entry";
 import { CarCard, Field, ImageCar, l, Notice, type Lang, type Perform } from "./common";
@@ -115,6 +115,14 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
     }
     setSaving(false);
   }
+  function selectPhoto(image: VehiclePhoto) {
+    setV((current)=> {
+      const previous = {photo:current.photo,photoSource:current.photoSource,photoCredit:current.photoCredit};
+      const other = (current.gallery ?? []).filter((item)=>item.photo!==image.photo);
+      return {...current,...image,gallery:[...(previous.photo && previous.photo!==image.photo ? [previous] : []),...other].slice(0,4)};
+    });
+    setDirty(true);
+  }
   const numberField=(key:"year"|"seats"|"doors"|"luggage"|"minAge"|"minLicenseYears"|"dailyRate"|"deposit",label:string,price=false)=><Field label={label+(untouched.includes(key)?" · review":"")}><input type="number" min={key==="year"?1900:0} step={price?".01":"1"} value={price?v[key]/100:v[key]} onChange={(e)=>set(key,Math.round(Number(e.target.value)*(price?100:1)))} /></Field>;
   return <>
     <section className="panel quick-entry"><div className="section-mini"><Sparkles size={20} /><h3>{l(lang,"Describe a car or offer","Opišite vozilo ali ponudbo")}</h3></div>
@@ -145,8 +153,9 @@ export function VehicleEditor({ initial, state, lang, run }: FleetProps & { init
           <label className="check"><input type="checkbox" checked={v.active} onChange={(e)=>set("active",e.target.checked)} /> Vehicle in service</label>
           {untouched.length > 0 && <button className="btn secondary" type="button" onClick={()=>setUntouched([])}>Confirm reviewed specifications</button>}
         </section>
-        <section className="panel form-stack"><h3>Listing photo</h3><div className="inline-actions"><label className="btn secondary file-btn"><Camera size={16} /> Upload photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={async (e)=>{const file=e.target.files?.[0];if(!file)return;try{const image=await localImage(file);setV((prev)=>({...prev,photo:image,photoSource:"owner",photoCredit:undefined}));setDirty(true);}catch(error){setNote((error as Error).message);}}} /></label><button className="btn secondary" type="button" disabled={busy} onClick={lookup}><ImagePlus size={16} /> {busy?"Searching…":"Find model photo"}</button></div>
-          {candidates.length > 0 && <div className="photo-options">{candidates.map((item)=><button key={item.src} type="button" onClick={()=>{setV({...v,photo:item.src,photoSource:"illustrative",photoCredit:photoCredit(item.credit)});setDirty(true);setCandidates([]);}}><img src={item.src} alt={item.credit.title} /><b>{item.credit.author}</b><small>{item.credit.license}</small></button>)}</div>}
+        <section className="panel form-stack"><h3>Listing photo</h3><div className="inline-actions"><label className="btn secondary file-btn"><Camera size={16} /> Upload photo<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={async (e)=>{const files=Array.from(e.target.files ?? []).slice(0,5);if(!files.length)return;try{const images=await Promise.all(files.map(localImage));for(const photo of images.reverse())selectPhoto({photo,photoSource:"owner",photoCredit:undefined});}catch(error){setNote((error as Error).message);}}} /></label><button className="btn secondary" type="button" disabled={busy} onClick={lookup}><ImagePlus size={16} /> {busy?"Searching…":"Find model photo"}</button></div>
+          {candidates.length > 0 && <div className="photo-options">{candidates.map((item)=><button key={item.src} type="button" onClick={()=>{selectPhoto({photo:item.src,photoSource:"illustrative",photoCredit:photoCredit(item.credit)});setCandidates([]);}}><img src={item.src} alt={item.credit.title} /><b>{item.credit.author}</b><small>{item.credit.license}</small></button>)}</div>}
+          {!!v.gallery?.length && <div className="photo-options">{v.gallery.map((item,index)=><div key={item.photo}><button type="button" onClick={()=>selectPhoto(item)}><img src={item.photo} alt={`Vehicle photo ${index+2}`} /><b>Set as cover</b></button><button type="button" onClick={()=>set("gallery",(v.gallery??[]).filter((candidate)=>candidate.photo!==item.photo))}>Remove</button></div>)}</div>}
           {v.photoCredit && <p className="muted">{v.photoCredit.author} · <a href={v.photoCredit.url} target="_blank" rel="noreferrer">{v.photoCredit.license} ↗</a></p>}
         </section>
       </div>

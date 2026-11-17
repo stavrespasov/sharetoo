@@ -8,7 +8,7 @@ export async function GET(request:NextRequest) {
   const id=request.nextUrl.searchParams.get("id");
   if(!hosted() || !id || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(id))return new Response(null,{status:404});
   const [state,owner]=await Promise.all([readHosted(),hasOwnerSession()]);
-  if(!state.vehicles.some((v)=>v.photo==="/api/media?id="+id&&(owner||isListed(v))))return new Response(null,{status:404});
+  if(!state.vehicles.some((v)=>(owner||isListed(v))&&[v.photo,...(v.gallery??[]).map((image)=>image.photo)].includes("/api/media?id="+id)))return new Response(null,{status:404});
   const item=await getMedia(id);
   if(!item)return new Response(null,{status:404});
   return new Response(new Uint8Array(item.data),{headers:{"Content-Type":item.content_type,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});

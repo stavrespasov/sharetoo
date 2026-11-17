@@ -37,6 +37,7 @@ test("owner publishes, customer requests, owner approves and records handover",a
   const ref=new URL(success).searchParams.get("ref")!;
   await page.goto("/admin/bookings");
   await page.getByRole("link",{name:ref,exact:true}).click();
+  await expect(page.getByRole("heading",{name:ref,exact:true})).toBeVisible();
   const booking=page.url();
   await page.getByRole("button",{name:"Confirm booking"}).click();
   await expect(page.getByText("BOOKING CONFIRMED CUSTOMER",{exact:true})).toHaveCount(1);

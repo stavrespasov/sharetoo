@@ -2,7 +2,7 @@ import "server-only";
 
 import postgres from "postgres";
 import { allocated, DomainError } from "../booking/domain";
-import type { Store } from "../booking/types";
+import type { Store, VehiclePhoto } from "../booking/types";
 import { command, mutate } from "./actions";
 import { seedStore } from "./seed";
 
@@ -45,20 +45,30 @@ export async function writeHosted(action: unknown) {
       const result = mutate(row.state,action);
       if (parsed.success && parsed.data.type==="vehicle") {
         const v=result.state.vehicles.find((item)=>item.id===(parsed.data as {vehicle:{id:string}}).vehicle.id)!;
-        const upload=v.photo.match(/^data:(image\/(?:webp|png|jpeg));base64,([a-zA-Z0-9+/=]+)$/);
-        if (upload) {
-          const id=crypto.randomUUID();
-          await tx`INSERT INTO sharetoo_demo_media (id,content_type,data) VALUES (${id},${upload[1]},${Buffer.from(upload[2],"base64")})`;
-          v.photo="/api/media?id="+id;
-        } else if (v.photo.startsWith("/api/media?") && !row.state.vehicles.some((item)=>item.photo===v.photo)) {
-          throw new DomainError("photo","Choose a current image or upload a new one.");
+        const savedPhotos = new Set(row.state.vehicles.flatMap((item)=>[item.photo,...(item.gallery ?? []).map((entry)=>entry.photo)]));
+        async function savePhoto(entry: VehiclePhoto) {
+          const upload=entry.photo.match(/^data:(image\/(?:webp|png|jpeg));base64,([a-zA-Z0-9+/=]+)$/);
+          if (upload) {
+            const id=crypto.randomUUID();
+            await tx`INSERT INTO sharetoo_demo_media (id,content_type,data) VALUES (${id},${upload[1]},${Buffer.from(upload[2],"base64")})`;
+            return {...entry,photo:"/api/media?id="+id};
+          }
+          if (entry.photo.startsWith("/api/media?") && !savedPhotos.has(entry.photo)) throw new DomainError("photo","Choose a current image or upload a new one.");
+          return entry;
         }
+        const primary = await savePhoto({photo:v.photo,photoSource:v.photoSource,photoCredit:v.photoCredit});
+        Object.assign(v,primary);
+        v.gallery = await Promise.all((v.gallery ?? []).map(savePhoto));
       }
       if (parsed.success && ["status","block","remove","reset"].includes(parsed.data.type)) await allocations(tx,result.state);
       await tx`UPDATE sharetoo_demo SET state=${tx.json(result.state as unknown as postgres.JSONValue)} WHERE name='default'`;
       await tx`DELETE FROM sharetoo_demo_media WHERE NOT EXISTS (
         SELECT 1 FROM jsonb_array_elements(${tx.json(result.state.vehicles as unknown as postgres.JSONValue)}) AS v
         WHERE v->>'photo' = '/api/media?id=' || sharetoo_demo_media.id::text
+          OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(COALESCE(v->'gallery','[]'::jsonb)) AS image
+            WHERE image->>'photo' = '/api/media?id=' || sharetoo_demo_media.id::text
+          )
       )`;
       return result;
     });

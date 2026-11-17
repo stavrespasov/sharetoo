@@ -30,12 +30,14 @@ export interface Vehicle {
   minAge: number;
   minLicenseYears: number;
   photo: string;
+  gallery?: VehiclePhoto[];
   photoSource: "illustrative" | "owner";
   photoCredit?: { title: string; author: string; license: string; url: string };
   archived?: boolean;
   published: boolean;
   active: boolean;
 }
+export type VehiclePhoto = Pick<Vehicle, "photo" | "photoSource" | "photoCredit">;
 export type PublicVehicle = Omit<Vehicle, "plate" | "published" | "active" | "archived">;
 export interface Interval { pickup: string; returnAt: string }
 export interface Block extends Interval {

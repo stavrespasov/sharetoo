@@ -132,12 +132,16 @@ function Detail({ vehicle, state, lang, selected }: Pick<Props,"state"|"lang"> &
   const [local,set] = useState(selected ?? quickInterval("today",state.settings));
   const { price, problem } = tripCheck(vehicle,state,local);
   const [openedAt] = useState(Date.now);
+  const [activePhoto,setActivePhoto] = useState(0);
+  const photos = [{photo:vehicle.photo,photoSource:vehicle.photoSource,photoCredit:vehicle.photoCredit},...(vehicle.gallery ?? [])];
+  const shownPhoto = photos[activePhoto] ?? photos[0];
   const occupied = [...state.blocks, ...state.bookings.filter((b) => ["CONFIRMED","PICKED_UP"].includes(b.status))].filter((item) => item.vehicleId === vehicle.id && Date.parse(item.returnAt) >= openedAt).sort((a,b) => a.pickup.localeCompare(b.pickup));
   const bookingHref = "/booking/" + vehicle.id + intervalQuery(local);
   return <main className="shell section subpage"><Breadcrumb items={[{label:l(lang,"Fleet","Vozila"),href:"/cars"+(params.size ? "?"+params.toString() : "")},{label:vehicleName(vehicle)}]} />
     <div className="detail-layout">
-      <div className="detail-main"><span className="eyebrow">{vehicle.category} · {vehicle.year}</span><h1>{vehicleName(vehicle)}</h1><ImageCar vehicle={vehicle} lang={lang} />
-        {vehicle.photoCredit && <p className="credit">Photo by {vehicle.photoCredit.author} · <a href={vehicle.photoCredit.url} target="_blank" rel="noreferrer">{vehicle.photoCredit.license} ↗</a></p>}
+      <div className="detail-main"><span className="eyebrow">{vehicle.category} · {vehicle.year}</span><h1>{vehicleName(vehicle)}</h1><ImageCar vehicle={{...vehicle,...shownPhoto}} lang={lang} />
+        {photos.length>1&&<div className="gallery-picks">{photos.map((item,index)=><button type="button" key={item.photo} className="icon-btn" aria-label={l(lang,"View photo","Prikaži fotografijo")+" "+(index+1)} aria-pressed={activePhoto===index} onClick={()=>setActivePhoto(index)}><img src={item.photo} alt="" /></button>)}</div>}
+        {shownPhoto.photoCredit && <p className="credit">Photo by {shownPhoto.photoCredit.author} · <a href={shownPhoto.photoCredit.url} target="_blank" rel="noreferrer">{shownPhoto.photoCredit.license} ↗</a></p>}
         <p className="detail-description">{lang === "sl" ? vehicle.descriptionSl : vehicle.description}</p>
         <div className="spec-grid">{[[l(lang,"Transmission","Menjalnik"),vehicle.transmission],[l(lang,"Fuel","Gorivo"),vehicle.fuel],[l(lang,"Seats","Sedeži"),vehicle.seats],[l(lang,"Doors","Vrata"),vehicle.doors],[l(lang,"Luggage","Prtljaga"),vehicle.luggage],[l(lang,"Color","Barva"),vehicle.color]].filter(([,v]) => v).map(([label,value]) => <div key={label}><small>{label}</small><b>{value}</b></div>)}</div>
         <div className="detail-info"><h3>{l(lang,"Pickup and requirements","Prevzem in pogoji")}</h3><p><MapPin size={17} /> {state.settings.address}</p><p><Clock3 size={17} />{state.settings.open}–{state.settings.close} · Europe/Ljubljana</p><p><ShieldCheck size={17} />{l(lang,"Original driving licence and ID","Izvirnik vozniškega dovoljenja in osebnega dokumenta")}{vehicle.minAge ? " · " + vehicle.minAge + "+" : ""}{vehicle.minLicenseYears ? " · Licence " + vehicle.minLicenseYears + "+ years" : ""}</p>{[...vehicle.features,...vehicle.rules].length > 0 && <p>{[...vehicle.features,...vehicle.rules].join(" · ")}</p>}</div>
@@ -185,7 +189,7 @@ function Book({ vehicle, state, lang, perform, selected }: Pick<Props,"state"|"l
         <label hidden>Company website<input tabIndex={-1} autoComplete="off" value={data.trap} onChange={(e) => setData({...data,trap:e.target.value})} /></label>
       </>}
       {(error || problem) && <Notice error>{error || problem}</Notice>}
-      <div className="inline-actions">{review && <button className="btn secondary" type="button" onClick={() => setReview(false)}>{l(lang,"Edit details","Uredi podatke")}</button>}<button className="btn primary" disabled={!!problem || pending}>{pending ? l(lang,"Sending…","Pošiljanje…") : review ? l(lang,"Send booking request","Pošlji povpraševanje") : l(lang,"Review request","Preglej povpraševanje")} <ArrowRight size={17} /></button></div>
+      <div className="inline-actions">{review && <button className="btn secondary" type="button" onClick={() => {setRequestId("");setReview(false);}}>{l(lang,"Edit details","Uredi podatke")}</button>}<button className="btn primary" disabled={!!problem || pending}>{pending ? l(lang,"Sending…","Pošiljanje…") : review ? l(lang,"Send booking request","Pošlji povpraševanje") : l(lang,"Review request","Preglej povpraševanje")} <ArrowRight size={17} /></button></div>
     </form><aside className="booking-panel"><ImageCar vehicle={vehicle} lang={lang} /><h3>{vehicleName(vehicle)}</h3>{price && <QuoteCard quote={price} lang={lang} />}<p className="muted">{l(lang,"Demo requests use sample contact details. No payment is collected.","Za predstavitvena povpraševanja uporabite vzorčne podatke. Plačil ni.")}</p></aside></div>
   </main>;
 }

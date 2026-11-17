@@ -10,13 +10,14 @@ const money = z.number().int().min(0).max(10_000_000);
 const count = (max: number) => z.number().int().min(0).max(max);
 const times = { pickup: short, returnAt: short };
 const photo = z.string().max(4_300_000).refine((value) => !value || /^\/api\/media\?id=[a-f0-9-]{36}$/.test(value) || /^\/demo\/[\w-]+\.webp$/.test(value) || /^data:image\/(?:webp|png|jpeg);base64,[a-zA-Z0-9+/=]+$/.test(value) || /^https:\/\/upload\.wikimedia\.org\//.test(value), "Choose an uploaded or catalog image.");
+const credit = z.object({ title: short, author: short, license: short, url: z.url().refine((value) => value.startsWith("https://commons.wikimedia.org/")) });
+const photoFields = { photo, photoSource: z.enum(["illustrative", "owner"]), photoCredit: credit.optional() };
 const clock = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/);
 const car = z.object({
   id, slug: id, make: short.min(1), model: short.min(1), trim: short, color: short, year: z.number().int().min(1900).max(2100),
   category: z.enum(categories), plate: short, transmission: z.enum(transmissions), fuel: z.enum(fuels), seats: count(20), doors: count(12), luggage: count(20),
   description: text, descriptionSl: text, features: z.array(short).max(35), rules: z.array(short).max(35),
-  dailyRate: money, deposit: money, minAge: count(99), minLicenseYears: count(50), photo,
-  photoSource: z.enum(["illustrative", "owner"]), photoCredit: z.object({ title: short, author: short, license: short, url: z.url().refine((value) => value.startsWith("https://commons.wikimedia.org/")) }).optional(),
+  dailyRate: money, deposit: money, minAge: count(99), minLicenseYears: count(50), ...photoFields, gallery: z.array(z.object(photoFields)).max(4).optional(),
   published: z.boolean(), active: z.boolean(), archived: z.boolean().optional(),
 });
 const ownerSettings = z.object({
